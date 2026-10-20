@@ -87,6 +87,7 @@ interface State {
   toast: { text: string; id: number } | null;
   wxTime: number | null;
   wxError: string | null;
+  trackInfo: { key: string; points: number; error: string | null } | null;
 
   setPrefs: (p: Partial<Prefs>) => void;
   setFilters: (f: Partial<Filters>) => void;
@@ -125,6 +126,7 @@ export const useStore = create<State>((set, get) => ({
   toast: null,
   wxTime: null,
   wxError: null,
+  trackInfo: null,
 
   setPrefs: (p) => {
     const prefs = { ...get().prefs, ...p };

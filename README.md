@@ -28,6 +28,29 @@ No API keys are required.
 | Coastlines / borders | Natural Earth 1:50m (public domain), bundled | Powers Radar mode and the offline fallback basemap. |
 | Basemaps | CARTO Dark Matter / Voyager, Esri World Imagery | Attribution shown on-map. CARTO basemaps are free for non-commercial use; check CARTO/Esri terms before commercial deployment. |
 
+## Deploy to GitHub Pages
+
+1. Push to `main`. 2. In the repo: **Settings → Pages → Source: GitHub Actions**.
+The workflow builds with `BASE_PATH=/<repo>/` and `VITE_DIRECT=1` (browser calls the providers directly)
+and publishes to `https://<user>.github.io/<repo>/`.
+
+If a provider blocks cross-origin requests from the Pages site, deploy `proxy/cloudflare-worker.js`
+(Cloudflare Workers free tier), add a repository variable `VITE_PROXY_BASE` = the worker URL
+(Settings → Secrets and variables → Actions → Variables) and re-run the workflow.
+
+## New in 2.1
+
+- **SimBrief navlog**: every waypoint with airway, altitude, distance, ETE, ETA and fuel; passed waypoints dim,
+  the next one is highlighted, ETAs switch to live estimates once your callsign is online; full OFP summary
+  (times, fuel, weights, step climbs, OFP PDF link).
+- **Route from the gate**: the selected aircraft's full IVAO session track
+  (`/v2/tracker/sessions/{id}/tracks`) is drawn in pink, the SimBrief plan in purple and the remaining route dotted.
+- **Airport ground charts**: taxiways with names, runways, aprons, terminals, stands and gates from
+  OpenStreetMap (Overpass API), shown from zoom 11.5 when an airport is selected or your aircraft is near one.
+- **Telemetry strip** with destination ETE/ETA/distance.
+- **Performance**: map updates pause while panning/zooming or when the tab is hidden, symbol fades off,
+  hover hit-testing throttled to one per frame, device-pixel-ratio capped at 2.
+
 ### Proxy / CORS
 
 The browser calls same-origin paths (`/proxy/ivao`, `/proxy/simbrief`, `/proxy/awc`, `/proxy/rainviewer`).

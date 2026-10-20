@@ -175,24 +175,56 @@ export interface Counts {
 
 export type FeedStatus = 'idle' | 'connecting' | 'live' | 'stale' | 'error' | 'demo';
 
+export interface NavFix {
+  ident: string;
+  name: string;
+  type: string; // wpt | vor | ndb | apt | ltlg
+  airway: string;
+  lat: number;
+  lon: number;
+  alt: number | null; // ft
+  wind: string | null; // e.g. 285/42
+  oat: number | null; // °C
+  ias: number | null;
+  tas: number | null;
+  gs: number | null;
+  track: number | null; // true
+  legNm: number | null;
+  cumNm: number; // cumulative from origin
+  legSec: number | null;
+  cumSec: number | null; // from takeoff
+  fuelOnboard: number | null;
+  fuelUsed: number | null;
+  freq: string | null;
+}
+
 export interface SimbriefPlan {
   callsign: string;
   flightNumber: string;
-  origin: { icao: string; name: string; lat: number; lon: number; rwy: string | null };
-  destination: { icao: string; name: string; lat: number; lon: number; rwy: string | null };
+  origin: { icao: string; iata: string; name: string; lat: number; lon: number; rwy: string | null; elev: number | null; metar: string | null };
+  destination: { icao: string; iata: string; name: string; lat: number; lon: number; rwy: string | null; elev: number | null; metar: string | null };
   alternate: string | null;
   aircraft: string;
+  aircraftName: string | null;
   registration: string | null;
   route: string;
   cruise: string;
+  stepClimbs: string | null;
   costIndex: string | null;
+  avgWind: string | null;
   distanceNm: number | null;
   airTime: number | null; // seconds
+  blockTime: number | null;
   schedOut: number | null; // unix s
   schedIn: number | null;
-  fuelBlock: string | null;
+  estOff: number | null; // takeoff
+  estOn: number | null; // landing
+  fuel: { block: number | null; trip: number | null; reserve: number | null; alternate: number | null; taxi: number | null; extra: number | null };
+  weights: { zfw: number | null; tow: number | null; ldw: number | null; pax: number | null; payload: number | null };
   units: string | null;
-  fixes: { ident: string; lat: number; lon: number; type: string; alt: number | null }[];
+  fixes: NavFix[];
+  totalNm: number;
+  pdfUrl: string | null;
   generatedAt: number | null;
 }
 

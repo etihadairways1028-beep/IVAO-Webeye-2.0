@@ -1,7 +1,6 @@
 import type { Metar } from '../types';
 
-const AWC: string = import.meta.env.VITE_AWC_URL || '/proxy/awc/api/data';
-const RAINVIEWER: string = import.meta.env.VITE_RAINVIEWER_URL || '/proxy/rainviewer/public/weather-maps.json';
+import { AWC_URL as AWC, RAINVIEWER_URL as RAINVIEWER } from './endpoints';
 
 /** METAR from NOAA Aviation Weather Center Data API (https://aviationweather.gov/data/api/). */
 export async function fetchMetar(icao: string, signal?: AbortSignal): Promise<Metar | null> {

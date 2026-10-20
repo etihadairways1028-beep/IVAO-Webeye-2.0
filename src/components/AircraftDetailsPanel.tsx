@@ -7,6 +7,7 @@ import { distanceNm } from '../lib/geo';
 import { Badge, KV, Panel, Section } from './ui';
 import { IconClock, IconCopy, IconCrosshair, IconFollow, IconGauge, IconPlane, IconRoute, IconUser } from './Icons';
 import type { Flight } from '../types';
+import { flightProgress, type Progress } from '../lib/progress';
 
 function useTick(ms: number) {
   const [, set] = useState(0);
@@ -16,11 +17,10 @@ function useTick(ms: number) {
   }, [ms]);
 }
 
-function RouteStrip({ f }: { f: Flight }) {
+function RouteStrip({ f, pr }: { f: Flight; pr: Progress }) {
   const dep = getAirport(f.dep);
   const arr = getAirport(f.arr);
-  // Progress from IVAO-reported distances when both are present.
-  const pct = f.departureDistance != null && f.arrivalDistance != null && f.departureDistance + f.arrivalDistance > 0 ? f.departureDistance / (f.departureDistance + f.arrivalDistance) : null;
+  const pct = pr.pct != null ? Math.max(0, Math.min(1, pr.pct)) : null;
   return (
     <div className="routestrip">
       <button className="rs-end" onClick={() => f.dep && selectAirport(f.dep)} disabled={!dep} title={dep?.name}>
@@ -36,7 +36,10 @@ function RouteStrip({ f }: { f: Flight }) {
             </span>
           )}
         </div>
-        <div className="rs-dist mono">{f.arrivalDistance != null ? `${fmtNm(f.arrivalDistance)} to go` : dep && arr ? `${fmtNm(distanceNm(dep.lat, dep.lon, arr.lat, arr.lon))} GC` : dash}</div>
+        <div className="rs-dist mono">
+          {pr.totalNm != null ? `${Math.round(pr.flownNm ?? 0)}/${Math.round(pr.totalNm)} NM` : dep && arr ? `${fmtNm(distanceNm(dep.lat, dep.lon, arr.lat, arr.lon))} GC` : dash}
+          {pr.eta != null && <span className="rs-eta">ETA {fmtZulu(pr.eta)} in {fmtDuration(pr.ete)} · {Math.round(pr.remainingNm ?? 0)} NM</span>}
+        </div>
       </div>
       <button className="rs-end right" onClick={() => f.arr && selectAirport(f.arr)} disabled={!arr} title={arr?.name}>
         <span className="rs-code mono">{f.arr ?? '····'}</span>
@@ -56,9 +59,9 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
   useTick(5000);
 
   const st = useStore.getState();
+  const trackInfo = useStore((s) => (s.trackInfo?.key === f.key ? s.trackInfo : null));
+  const pr = flightProgress(f, plan);
   const mine = myVid && Number(myVid) === f.vid;
-  // ETA shown only when en route with a sensible speed, and labelled as an estimate.
-  const eta = !f.onGround && f.arrivalDistance != null && f.groundSpeed != null && f.groundSpeed > 100 ? Date.now() + (f.arrivalDistance / f.groundSpeed) * 3600000 : null;
   const planMatch = plan && plan.callsign.toUpperCase() === f.callsign;
 
   return (
@@ -107,7 +110,7 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
         {f.transponder && <Badge title="Transponder code">SQK {f.transponder}</Badge>}
       </div>
 
-      <RouteStrip f={f} />
+      <RouteStrip f={f} pr={pr} />
 
       <Section title="Live telemetry" icon={<IconGauge size={15} />} aside={<span className="mono dim">{f.trackTime ? `${fmtZulu(f.trackTime, true)} · ${ago(f.trackTime)}` : fetchedAt ? ago(fetchedAt) : dash}</span>}>
         <div className="grid-kv big">
@@ -124,10 +127,10 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
         <div className="grid-kv">
           <KV k="Cruise" v={f.cruiseLevel ?? dash} />
           <KV k="Cruise speed" v={f.cruiseSpeed ?? dash} />
-          <KV k="Remaining" v={fmtNm(f.arrivalDistance)} note="Distance to arrival as reported by IVAO" />
-          <KV k="Flown" v={fmtNm(f.departureDistance)} note="Distance from departure as reported by IVAO" />
+          <KV k="Remaining" v={fmtNm(pr.remainingNm)} note={pr.source === 'plan' ? 'Along your SimBrief route' : 'Distance to arrival as reported by IVAO'} />
+          <KV k="Flown" v={fmtNm(pr.flownNm)} note={pr.source === 'plan' ? 'Along your SimBrief route' : 'Distance from departure as reported by IVAO'} />
           <KV k="Filed EET" v={fmtDuration(f.eet)} />
-          <KV k="Est. arrival" v={eta ? fmtZulu(eta) : dash} note="Estimated from remaining distance at current groundspeed — not authoritative" />
+          <KV k="Est. arrival" v={pr.eta ? fmtZulu(pr.eta) : dash} note="Estimated from remaining distance at current groundspeed — not authoritative" />
           <KV k="Alternate" v={f.alt ?? dash} />
           <KV k="POB" v={f.pob ?? dash} />
         </div>
@@ -137,7 +140,7 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
           </div>
         )}
         <div className="legend-row">
-          <span className="lg lg-trail" /> Observed trail <span className="lg lg-rem" /> Remaining (great circle)
+          <span className="lg lg-trail" /> {trackInfo && trackInfo.points > 1 ? 'Flown track from gate (IVAO)' : 'Flown track (since page opened)'} <span className="lg lg-rem" /> Remaining{planMatch ? '' : ' (great circle)'}
           {planMatch ? (
             <>
               <span className="lg lg-plan" /> SimBrief plan
@@ -148,7 +151,10 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
             </>
           )}
         </div>
-        <p className="fineprint">The filed route is shown as text; plotted lines are a great-circle reference unless a matching SimBrief plan is loaded.</p>
+        <p className="fineprint">
+          {planMatch ? 'Purple = your SimBrief route; distances and ETA follow it.' : 'The filed route is shown as text; plotted lines are a great-circle reference. Import this flight’s SimBrief OFP under My flight to draw the exact route.'}
+          {trackInfo?.error ? ` Full session track unavailable (${trackInfo.error}).` : ''}
+        </p>
       </Section>
 
       <Section title="Pilot" icon={<IconUser size={15} />}>

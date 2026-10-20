@@ -1,13 +1,20 @@
-import type { AtcPosition, Controller, Counts, Flight, RawAtc, RawPilot, RawWhazzup, WakeCat } from '../types';
+import type { AtcPosition, Controller, Counts, Flight, RawAtc, RawLastTrack, RawPilot, RawWhazzup, WakeCat } from '../types';
 import { getAirport } from './airports';
 
-export const WHAZZUP_URL: string = import.meta.env.VITE_WHAZZUP_URL || '/proxy/ivao/v2/tracker/whazzup';
+import { CORS_HINT, IVAO_BASE, WHAZZUP_URL } from './endpoints';
+export { WHAZZUP_URL };
 
 /** IVAO refreshes Whazzup every 15 s; polling faster only wastes their bandwidth. */
 export const MIN_POLL_SECONDS = 15;
 
 export async function fetchWhazzup(signal: AbortSignal): Promise<RawWhazzup> {
-  const res = await fetch(WHAZZUP_URL, { signal, headers: { Accept: 'application/json' }, cache: 'no-store' });
+  let res: Response;
+  try {
+    res = await fetch(WHAZZUP_URL, { signal, headers: { Accept: 'application/json' }, cache: 'no-store' });
+  } catch (e) {
+    if (signal.aborted) throw e;
+    throw new Error(`Network error reaching IVAO${CORS_HINT}`);
+  }
   if (!res.ok) throw new Error(`IVAO Whazzup responded HTTP ${res.status}`);
   const ct = res.headers.get('content-type') ?? '';
   if (!ct.includes('json')) throw new Error('IVAO Whazzup did not return JSON (is the /proxy route configured?)');
@@ -172,4 +179,28 @@ export function normalizeWhazzup(raw: RawWhazzup, prev: Map<string, Flight>): { 
       uniqueUsers24h: num(c.uniqueUsers24h),
     },
   };
+}
+
+export interface TrackPoint {
+  lat: number;
+  lon: number;
+  alt: number | null;
+  gs: number | null;
+  onGround: boolean;
+  t: string | null;
+}
+
+/**
+ * Full position history of a pilot session (from connection, i.e. from the gate):
+ * GET /v2/tracker/sessions/{sessionId}/tracks — part of IVAO's public tracker API.
+ */
+export async function fetchSessionTrack(sessionId: number, signal?: AbortSignal): Promise<TrackPoint[]> {
+  const res = await fetch(`${IVAO_BASE}/v2/tracker/sessions/${sessionId}/tracks`, { signal, headers: { Accept: 'application/json' } });
+  if (!res.ok) throw new Error(`IVAO tracks HTTP ${res.status}`);
+  const arr = (await res.json()) as RawLastTrack[];
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .filter((p) => typeof p.latitude === 'number' && typeof p.longitude === 'number')
+    .map((p) => ({ lat: p.latitude!, lon: p.longitude!, alt: num(p.altitude), gs: num(p.groundSpeed), onGround: !!p.onGround, t: str(p.timestamp) }))
+    .sort((a, b) => (a.t && b.t ? a.t.localeCompare(b.t) : 0));
 }

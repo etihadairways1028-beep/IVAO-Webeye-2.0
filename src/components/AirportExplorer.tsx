@@ -10,6 +10,9 @@ import { Badge, Empty, KV, Panel, Section } from './ui';
 import { IconBack, IconCloud, IconPlane, IconRunway, IconTower } from './Icons';
 import { AtcRow } from './ATCStations';
 import type { Airport, Flight, Metar, Runway } from '../types';
+import { chartState, loadChart, onChartsChange } from '../data/charts';
+import { useStore as useS } from '../state/store';
+import { useSyncExternalStore } from 'react';
 
 function FlightRows({ list, empty, field }: { list: Flight[]; empty: string; field: 'dep' | 'arr' | 'near' }) {
   if (!list.length) return <p className="dim small">{empty}</p>;
@@ -68,6 +71,35 @@ function Weather({ icao }: { icao: string }) {
   );
 }
 
+function ChartCard({ a }: { a: Airport }) {
+  const st = useSyncExternalStore(onChartsChange, () => chartState(a.icao));
+  return (
+    <div className="chart-card">
+      <div className="chart-card-text">
+        <div className="strong">Ground chart</div>
+        <div className="dim small">
+          {!st || st.status === 'loading'
+            ? 'Loading taxiways, stands and gates…'
+            : st.status === 'error'
+              ? `Unavailable: ${st.error}`
+              : st.fc.features.length === 0
+                ? 'No taxiway data mapped for this airport yet.'
+                : `${st.counts.taxiways} named taxiways · ${st.counts.stands} stands · ${st.counts.gates} gates`}
+        </div>
+      </div>
+      {st?.status === 'error' ? (
+        <button className="btn ghost" onClick={() => loadChart(a.icao)}>
+          Retry
+        </button>
+      ) : (
+        <button className="btn" disabled={st?.status !== 'ready'} onClick={() => useS.getState().camera_({ type: 'fly', center: [a.lon, a.lat], zoom: a.size === 3 ? 14 : 15 })}>
+          Open chart
+        </button>
+      )}
+    </div>
+  );
+}
+
 function AirportDetail({ a }: { a: Airport }) {
   const flights = useStore((s) => s.flights);
   const controllers = useStore((s) => s.controllers);
@@ -119,6 +151,8 @@ function AirportDetail({ a }: { a: Airport }) {
         <KV k="Departures" v={dep.length} />
         <KV k="Arrivals" v={arr.length} />
       </div>
+
+      <ChartCard a={a} />
 
       <Section title="Online ATC" icon={<IconTower size={15} />}>
         {atc.length ? (
@@ -180,7 +214,7 @@ function AirportDetail({ a }: { a: Airport }) {
             </tbody>
           </table>
         )}
-        <p className="fineprint">Airport and runway data: OurAirports (public domain). Not for real-world navigation.</p>
+        <p className="fineprint">Runway table: OurAirports (public domain). Ground chart: © OpenStreetMap contributors. Not for real-world navigation.</p>
       </Section>
     </>
   );

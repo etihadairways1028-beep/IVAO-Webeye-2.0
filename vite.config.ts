@@ -9,9 +9,12 @@ const proxy = {
   '/proxy/simbrief': { target: 'https://www.simbrief.com', changeOrigin: true, rewrite: (p: string) => p.replace(/^\/proxy\/simbrief/, '') },
   '/proxy/awc': { target: 'https://aviationweather.gov', changeOrigin: true, rewrite: (p: string) => p.replace(/^\/proxy\/awc/, '') },
   '/proxy/rainviewer': { target: 'https://api.rainviewer.com', changeOrigin: true, rewrite: (p: string) => p.replace(/^\/proxy\/rainviewer/, '') },
+  '/proxy/overpass': { target: 'https://overpass-api.de', changeOrigin: true, rewrite: (p: string) => p.replace(/^\/proxy\/overpass/, '') },
 };
 
 export default defineConfig({
+  // GitHub Pages serves the site from /<repo>/; the deploy workflow sets BASE_PATH.
+  base: process.env.BASE_PATH || '/',
   plugins: [react()],
   server: { proxy, port: 5173, host: true },
   preview: { proxy, port: 4173, host: true },

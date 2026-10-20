@@ -8,12 +8,17 @@ import { trails } from '../data/feed';
 import { circle, destination, greatCircle, unwrap } from '../lib/geo';
 import { fmtAltShort } from '../lib/format';
 import type { RadarFrame } from '../data/weather';
+import type { TrackPoint } from '../data/ivao';
+import { planPoints, progressAlong } from '../data/simbrief';
+import { allCharts } from '../data/charts';
 
 type FC = GeoJSON.FeatureCollection;
 const EMPTY: FC = { type: 'FeatureCollection', features: [] };
 
 export const ATC_COLORS: Record<string, string> = { DEL: '#a78bfa', GND: '#34d399', TWR: '#f87171', APP: '#60a5fa', DEP: '#38bdf8', CTR: '#fbbf24', FSS: '#fbbf24', RMP: '#34d399', OTHER: '#94a3b8' };
 const RING_NM: Record<string, number> = { TWR: 12, APP: 40, DEP: 35 };
+
+export const ROUTE_COLORS = { plan: '#8b5cf6', flown: '#ff4fc3', remaining: '#ff4fc3' };
 
 export const ALT_RAMP: [number, string][] = [[0, '#9aa6bd'], [3000, '#ff8f4d'], [10000, '#ffd166'], [20000, '#6ee7a8'], [30000, '#4cc9f0'], [40000, '#b69cff']];
 
@@ -43,6 +48,8 @@ export class MapController {
   private popup: maplibregl.Popup;
   private hoverKey: string | null = null;
   private styleTimer = 0;
+  private track: TrackPoint[] | null = null;
+  private hoverFrame = 0;
   private destroyed = false;
   private cb: MapCallbacks;
 
@@ -56,12 +63,14 @@ export class MapController {
       center: [32, 34],
       zoom: window.innerWidth < 700 ? 1.6 : 2.6,
       minZoom: 1.2,
-      maxZoom: 16,
+      maxZoom: 18,
+      pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+      maxTileCacheSize: 200,
       attributionControl: { compact: true },
       dragRotate: false,
       pitchWithRotate: false,
       touchPitch: false,
-      fadeDuration: 150,
+      fadeDuration: 0,
     });
     this.map.setStyle(styleFor(this.styleId), { diff: false, transformStyle: (_p, n) => this.transform(n) });
     this.map.touchZoomRotate.disableRotation();
@@ -78,6 +87,7 @@ export class MapController {
 
   destroy() {
     this.destroyed = true;
+    if (this.hoverFrame) cancelAnimationFrame(this.hoverFrame);
     window.clearTimeout(this.tickHandle);
     window.clearTimeout(this.styleTimer);
     this.popup.remove();
@@ -149,6 +159,19 @@ export class MapController {
     // Weather radar (RainViewer) sits directly above the basemap.
     if (this.radar && this.prefs.layers.weather) this.addWeather();
 
+    // Airport ground chart (OpenStreetMap): drawn under everything else.
+    src('chart', allCharts());
+    const chartMin = 11.5;
+    m.addLayer({ id: 'chart-apron', type: 'fill', source: 'chart', minzoom: chartMin, filter: ['all', ['==', ['geometry-type'], 'Polygon'], ['==', ['get', 'kind'], 'apron']], paint: { 'fill-color': dark ? '#141c2e' : '#dfe3ea', 'fill-opacity': 0.9 } });
+    m.addLayer({ id: 'chart-bldg', type: 'fill', source: 'chart', minzoom: chartMin, filter: ['all', ['==', ['geometry-type'], 'Polygon'], ['in', ['get', 'kind'], ['literal', ['terminal', 'hangar']]]], paint: { 'fill-color': dark ? '#26324a' : '#c3cad6', 'fill-outline-color': dark ? '#3a4866' : '#9aa5b5' } });
+    m.addLayer({ id: 'chart-runway', type: 'line', source: 'chart', minzoom: chartMin, filter: ['all', ['==', ['geometry-type'], 'LineString'], ['==', ['get', 'kind'], 'runway']], layout: { 'line-cap': 'butt' }, paint: { 'line-color': dark ? '#3b465e' : '#8a94a6', 'line-width': ['interpolate', ['exponential', 2], ['zoom'], 12, 6, 16, 60, 18, 220] } });
+    m.addLayer({ id: 'chart-taxiway', type: 'line', source: 'chart', minzoom: chartMin, filter: ['all', ['==', ['geometry-type'], 'LineString'], ['in', ['get', 'kind'], ['literal', ['taxiway', 'taxilane']]]], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': dark ? '#c9a73a' : '#c89b12', 'line-opacity': ['match', ['get', 'kind'], 'taxilane', 0.45, 0.85], 'line-width': ['interpolate', ['exponential', 2], ['zoom'], 12, 0.8, 15, 2.2, 18, 8] } });
+    m.addLayer({ id: 'chart-hold', type: 'line', source: 'chart', minzoom: 14, filter: ['all', ['==', ['geometry-type'], 'LineString'], ['==', ['get', 'kind'], 'holding_position']], paint: { 'line-color': '#ff6b6b', 'line-width': 2 } });
+    m.addLayer({ id: 'chart-taxi-labels', type: 'symbol', source: 'chart', minzoom: 13.5, filter: ['all', ['==', ['geometry-type'], 'LineString'], ['==', ['get', 'kind'], 'taxiway'], ['!=', ['get', 'label'], '']], layout: { 'symbol-placement': 'line', 'symbol-spacing': 220, 'text-field': ['get', 'label'], 'text-font': FONT_BOLD, 'text-size': 11, 'text-keep-upright': true, 'text-rotation-alignment': 'viewport' }, paint: { 'text-color': '#1a1405', 'text-halo-color': '#f2cc4d', 'text-halo-width': 3 } });
+    m.addLayer({ id: 'chart-rwy-labels', type: 'symbol', source: 'chart', minzoom: 12.5, filter: ['all', ['==', ['geometry-type'], 'LineString'], ['==', ['get', 'kind'], 'runway'], ['!=', ['get', 'label'], '']], layout: { 'symbol-placement': 'line-center', 'text-field': ['get', 'label'], 'text-font': FONT_BOLD, 'text-size': 12, 'text-keep-upright': true }, paint: { 'text-color': '#ffffff', 'text-halo-color': '#111827', 'text-halo-width': 2 } });
+    m.addLayer({ id: 'chart-stands', type: 'circle', source: 'chart', minzoom: 14.5, filter: ['all', ['==', ['geometry-type'], 'Point'], ['in', ['get', 'kind'], ['literal', ['parking_position', 'gate']]]], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 14.5, 2, 18, 5], 'circle-color': ['match', ['get', 'kind'], 'gate', '#7db4ff', '#3ff0d0'], 'circle-opacity': 0.9 } });
+    m.addLayer({ id: 'chart-stand-labels', type: 'symbol', source: 'chart', minzoom: 15.5, filter: ['all', ['==', ['geometry-type'], 'Point'], ['in', ['get', 'kind'], ['literal', ['parking_position', 'gate']]], ['!=', ['get', 'label'], '']], layout: { 'text-field': ['get', 'label'], 'text-font': FONT_REG, 'text-size': 10, 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true }, paint: { 'text-color': dark ? '#b8fff2' : '#0f5132', 'text-halo-color': halo, 'text-halo-width': 1.2 } });
+
     src('atc-rings');
     m.addLayer({ id: 'atc-ring-fill', type: 'fill', source: 'atc-rings', layout: { visibility: this.vis('atc') }, paint: { 'fill-color': ['get', 'color'], 'fill-opacity': ['case', ['get', 'sel'], 0.07, 0.04] } });
     m.addLayer({ id: 'atc-ring-line', type: 'line', source: 'atc-rings', layout: { visibility: this.vis('atc') }, paint: { 'line-color': ['get', 'color'], 'line-opacity': ['case', ['get', 'sel'], 0.95, 0.45], 'line-width': ['case', ['get', 'sel'], 1.6, 0.8] } });
@@ -166,16 +189,17 @@ export class MapController {
     m.addLayer({ id: 'atc-labels', type: 'symbol', source: 'atc', minzoom: 3.2, layout: { visibility: this.vis('atc'), 'text-field': ['get', 'label'], 'text-font': FONT_BOLD, 'text-size': 10.5, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-optional': true, 'text-letter-spacing': 0.04 }, paint: { 'text-color': ['get', 'color'], 'text-halo-color': halo, 'text-halo-width': 1.3 } });
 
     src('plan');
-    m.addLayer({ id: 'plan-line', type: 'line', source: 'plan', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#3ff0d0', 'line-width': 2.2, 'line-opacity': 0.9 } });
-    m.addLayer({ id: 'plan-fixes', type: 'circle', source: 'plan', filter: ['==', ['geometry-type'], 'Point'], minzoom: 4, paint: { 'circle-radius': 2.6, 'circle-color': dark ? '#04131a' : '#fff', 'circle-stroke-color': '#3ff0d0', 'circle-stroke-width': 1.4 } });
-    m.addLayer({ id: 'plan-fix-labels', type: 'symbol', source: 'plan', filter: ['==', ['geometry-type'], 'Point'], minzoom: 5.5, layout: { 'text-field': ['get', 'ident'], 'text-font': FONT_REG, 'text-size': 9.5, 'text-offset': [0.7, 0], 'text-anchor': 'left', 'text-optional': true }, paint: { 'text-color': '#8ff7e4', 'text-halo-color': halo, 'text-halo-width': 1 } });
+    m.addLayer({ id: 'plan-casing', type: 'line', source: 'plan', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLORS.plan, 'line-width': 7, 'line-opacity': 0.18, 'line-blur': 2 } });
+    m.addLayer({ id: 'plan-line', type: 'line', source: 'plan', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLORS.plan, 'line-width': 2.6, 'line-opacity': 0.95 } });
+    m.addLayer({ id: 'plan-fixes', type: 'circle', source: 'plan', filter: ['==', ['geometry-type'], 'Point'], minzoom: 3.5, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 3.5, 2, 8, 3.5], 'circle-color': dark ? '#0b0620' : '#fff', 'circle-stroke-color': ['case', ['get', 'passed'], '#6b5b95', '#c4b5fd'], 'circle-stroke-width': 1.5 } });
+    m.addLayer({ id: 'plan-fix-labels', type: 'symbol', source: 'plan', filter: ['==', ['geometry-type'], 'Point'], minzoom: 4.5, layout: { 'text-field': ['get', 'ident'], 'text-font': FONT_BOLD, 'text-size': 10, 'text-offset': [0.8, 0], 'text-anchor': 'left', 'text-optional': true }, paint: { 'text-color': ['case', ['get', 'passed'], '#8b7fb0', '#ddd6fe'], 'text-halo-color': halo, 'text-halo-width': 1.3 } });
 
     src('route');
     m.addLayer({ id: 'route-ref', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'ref'], paint: { 'line-color': dark ? '#ffffff' : '#0f172a', 'line-opacity': 0.22, 'line-width': 1.2, 'line-dasharray': [2, 3] } });
-    m.addLayer({ id: 'route-remaining', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'remaining'], paint: { 'line-color': '#ffb547', 'line-opacity': 0.75, 'line-width': 1.6, 'line-dasharray': [1.5, 2] } });
-    m.addLayer({ id: 'route-trail', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'trail'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffb547', 'line-width': 2.4, 'line-opacity': 0.95 } });
-    m.addLayer({ id: 'route-ends', type: 'circle', source: 'route', filter: ['==', ['get', 'kind'], 'end'], paint: { 'circle-radius': 5, 'circle-color': dark ? '#0b1222' : '#fff', 'circle-stroke-color': '#ffb547', 'circle-stroke-width': 2 } });
-    m.addLayer({ id: 'route-end-labels', type: 'symbol', source: 'route', filter: ['==', ['get', 'kind'], 'end'], layout: { 'text-field': ['get', 'icao'], 'text-font': FONT_BOLD, 'text-size': 11.5, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-allow-overlap': true }, paint: { 'text-color': '#ffcf85', 'text-halo-color': halo, 'text-halo-width': 1.5 } });
+    m.addLayer({ id: 'route-remaining', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'remaining'], layout: { 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLORS.remaining, 'line-opacity': 0.9, 'line-width': 2, 'line-dasharray': [0.6, 2.2] } });
+    m.addLayer({ id: 'route-trail', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'trail'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLORS.flown, 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 2.4, 14, 3.5], 'line-opacity': 0.95 } });
+    m.addLayer({ id: 'route-ends', type: 'circle', source: 'route', filter: ['==', ['get', 'kind'], 'end'], paint: { 'circle-radius': 5, 'circle-color': dark ? '#0b1222' : '#fff', 'circle-stroke-color': ROUTE_COLORS.flown, 'circle-stroke-width': 2 } });
+    m.addLayer({ id: 'route-end-labels', type: 'symbol', source: 'route', filter: ['==', ['get', 'kind'], 'end'], layout: { 'text-field': ['get', 'icao'], 'text-font': FONT_BOLD, 'text-size': 11.5, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-allow-overlap': true }, paint: { 'text-color': '#ffb3e6', 'text-halo-color': halo, 'text-halo-width': 1.5 } });
 
     src('history');
     m.addLayer({ id: 'history', type: 'circle', source: 'history', layout: { visibility: this.styleId === 'radar' && this.prefs.layers.trails ? 'visible' : 'none' }, paint: { 'circle-radius': 1.4, 'circle-color': '#7cf2b4', 'circle-opacity': ['get', 'o'] } });
@@ -337,6 +361,11 @@ export class MapController {
     this.set('atc-rings', { type: 'FeatureCollection', features: rings });
   }
 
+  /** Plan applies to the selected flight when the callsign matches. */
+  private planFor(f: Flight | undefined): SimbriefPlan | null {
+    return f && this.plan && this.plan.callsign.toUpperCase() === f.callsign ? this.plan : null;
+  }
+
   private pushRoute() {
     if (!this.map.getSource('route')) return;
     const features: GeoJSON.Feature[] = [];
@@ -345,13 +374,22 @@ export class MapController {
       const dep = getAirport(f.dep);
       const arr = getAirport(f.arr);
       const [lon, lat] = this.pos(f, Date.now());
-      if (dep && arr && !this.plan) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: greatCircle(dep.lat, dep.lon, arr.lat, arr.lon, 96) }, properties: { kind: 'ref' } });
-      if (arr && !f.onGround) {
-        const rem = greatCircle(lat, lon, arr.lat, arr.lon, 48);
-        features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: rem }, properties: { kind: 'remaining' } });
+      const plan = this.planFor(f);
+      if (dep && arr && !plan) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: greatCircle(dep.lat, dep.lon, arr.lat, arr.lon, 96) }, properties: { kind: 'ref' } });
+      if (!f.onGround) {
+        if (plan) {
+          // Remaining = rest of the SimBrief route from the aircraft's projected position.
+          const pts = planPoints(plan);
+          const { legIndex } = progressAlong(plan, lat, lon);
+          const rest: [number, number][] = [[lon, lat], ...pts.slice(legIndex + 1).map((p) => [p.lon, p.lat] as [number, number])];
+          features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: unwrap(rest) }, properties: { kind: 'remaining' } });
+        } else if (arr) {
+          features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: greatCircle(lat, lon, arr.lat, arr.lon, 48) }, properties: { kind: 'remaining' } });
+        }
       }
-      const t = trails.get(f.key);
-      if (t && t.length > 1) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: unwrap([...t.map((p) => [p[0], p[1]] as [number, number]), [lon, lat]]) }, properties: { kind: 'trail' } });
+      // Flown track: full IVAO session history (from the gate) when available, else what this browser observed.
+      const src = this.track && this.track.length > 1 ? this.track.map((p) => [p.lon, p.lat] as [number, number]) : (trails.get(f.key) ?? []).map((p) => [p[0], p[1]] as [number, number]);
+      if (src.length > 1) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: unwrap([...src, [lon, lat]]) }, properties: { kind: 'trail' } });
       for (const a of [dep, arr]) if (a) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [a.lon, a.lat] }, properties: { kind: 'end', icao: a.icao } });
     }
     const s = this.selection;
@@ -366,26 +404,41 @@ export class MapController {
     if (!this.map.getSource('plan')) return;
     const p = this.plan;
     if (!p) return this.set('plan', EMPTY);
-    const pts: [number, number][] = [[p.origin.lon, p.origin.lat], ...p.fixes.map((x) => [x.lon, x.lat] as [number, number]), [p.destination.lon, p.destination.lat]];
+    const pts = planPoints(p);
     // Densify each leg along the great circle so long oceanic legs curve correctly.
     const line: [number, number][] = [];
     for (let i = 0; i < pts.length - 1; i++) {
-      const seg = greatCircle(pts[i][1], pts[i][0], pts[i + 1][1], pts[i + 1][0], 12);
+      const seg = greatCircle(pts[i].lat, pts[i].lon, pts[i + 1].lat, pts[i + 1].lon, 8);
       line.push(...(i ? seg.slice(1) : seg));
     }
+    const live = this.flights.find((x) => x.callsign === p.callsign.toUpperCase());
+    const along = live && !live.onGround ? progressAlong(p, live.lat, live.lon).alongNm : live?.onGround && (live.arrivalDistance ?? 999) < 5 ? Infinity : -1;
     const features: GeoJSON.Feature[] = [{ type: 'Feature', geometry: { type: 'LineString', coordinates: unwrap(line) }, properties: {} }];
-    for (const x of p.fixes) if (x.type !== 'apt' && x.ident !== 'TOC' && x.ident !== 'TOD') features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [x.lon, x.lat] }, properties: { ident: x.ident } });
+    for (const x of p.fixes) if (x.type !== 'apt' && x.ident !== 'TOC' && x.ident !== 'TOD') features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [x.lon, x.lat] }, properties: { ident: x.ident, passed: x.cumNm < along } });
     this.set('plan', { type: 'FeatureCollection', features });
   }
 
   // ───────── public setters
 
   setFlights(flights: Flight[], fetchedAt: number | null) {
+    const fresh = this.flights !== flights;
     this.flights = flights;
     this.fetchedAt = fetchedAt ?? Date.now();
     this.pushAircraft();
     this.pushRoute();
-    this.pushHistory();
+    if (fresh) {
+      this.pushHistory();
+      if (this.plan) this.pushPlan();
+    }
+  }
+
+  setTrack(t: TrackPoint[] | null) {
+    this.track = t;
+    this.pushRoute();
+  }
+
+  refreshCharts() {
+    this.set('chart', allCharts());
   }
 
   setControllers(c: Controller[]) {
@@ -394,6 +447,9 @@ export class MapController {
   }
 
   setSelection(s: Selection, showRoute: boolean) {
+    const a = this.selection;
+    const changed = !s || !a || s.kind !== a.kind || (s.kind === 'flight' && a.kind === 'flight' && s.key !== a.key);
+    if (changed) this.track = null;
     this.selection = s;
     this.showRoute = showRoute;
     this.pushAircraft();
@@ -481,14 +537,20 @@ export class MapController {
 
   private tick() {
     if (this.destroyed) return;
-    this.pushAircraft();
-    const f = this.selectedFlight();
-    if (f) {
-      if (this.follow) this.map.easeTo({ center: this.pos(f, Date.now()), duration: 900, easing: (t) => t, padding: this.padding() });
-      this.pushRoute();
+    const zoom = this.map.getZoom();
+    // Skip work while the tab is hidden or the user is panning/zooming — updating
+    // a GeoJSON source mid-gesture is the main source of perceived lag.
+    if (!document.hidden && !(this.map.isMoving() && !this.follow)) {
+      const f = this.selectedFlight();
+      if (f && this.follow) {
+        const to = this.pos(f, Date.now() + 1000);
+        this.map.easeTo({ center: to, duration: zoom >= 9 ? 480 : 980, easing: (t) => t, padding: this.padding() });
+      }
+      this.pushAircraft();
+      if (f && !f.onGround) this.pushRoute();
     }
-    const fast = this.map.getZoom() >= 8 || this.follow;
-    this.tickHandle = window.setTimeout(this.tick, fast ? 250 : 1000);
+    const fast = this.follow || zoom >= 9;
+    this.tickHandle = window.setTimeout(this.tick, fast ? 500 : 1000);
   }
 
   private bindEvents() {
@@ -508,7 +570,24 @@ export class MapController {
       const ap = hits.find((h) => h.layer.id === 'airports');
       if (ap) return this.cb.onSelect({ kind: 'airport', icao: String(ap.properties.icao) });
     });
-    m.on('mousemove', (e) => {
+    m.on('mousemove', (ev) => {
+      if (this.hoverFrame) return;
+      this.hoverFrame = requestAnimationFrame(() => {
+        this.hoverFrame = 0;
+        this.hover(ev);
+      });
+    });
+    m.on('mouseout', () => {
+      this.popup.remove();
+      this.hoverKey = null;
+    });
+    this.bindView();
+  }
+
+  private hover(e: maplibregl.MapMouseEvent) {
+    const m = this.map;
+    const clickable = ['aircraft', 'atc', 'airports'];
+    {
       const layers = clickable.filter((l) => m.getLayer(l));
       if (!layers.length) return;
       const hits = m.queryRenderedFeatures([[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]], { layers });
@@ -533,11 +612,11 @@ export class MapController {
         this.popup.setDOMContent(el);
       }
       this.popup.setLngLat(ac.geometry.type === 'Point' ? (ac.geometry.coordinates as [number, number]) : e.lngLat).addTo(m);
-    });
-    m.on('mouseout', () => {
-      this.popup.remove();
-      this.hoverKey = null;
-    });
+    }
+  }
+
+  private bindView() {
+    const m = this.map;
     const emitView = () => {
       const b = m.getBounds();
       this.cb.onView([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], m.getZoom());

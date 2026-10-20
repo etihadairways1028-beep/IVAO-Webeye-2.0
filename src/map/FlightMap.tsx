@@ -4,6 +4,8 @@ import { MapController } from './controller';
 import { useStore } from '../state/store';
 import { fetchRadarFrame } from '../data/weather';
 import { getAirport } from '../data/airports';
+import { fetchSessionTrack } from '../data/ivao';
+import { loadChart, onChartsChange } from '../data/charts';
 
 let controller: MapController | null = null;
 export const getMapController = () => controller;
@@ -59,6 +61,49 @@ export function FlightMap() {
       controller = null;
     };
   }, []);
+
+  // Full session track ("from the gate") for the selected live flight; refreshed each minute.
+  const selKey = useStore((s) => (s.selection?.kind === 'flight' ? s.selection.key : null));
+  useEffect(() => {
+    if (!selKey) return;
+    const f = useStore.getState().flightMap.get(selKey);
+    if (!f || f.demo || f.sessionId <= 0) return;
+    let alive = true;
+    const ctrl = new AbortController();
+    const load = () =>
+      fetchSessionTrack(f.sessionId, ctrl.signal)
+        .then((t) => {
+          if (!alive) return;
+          controller?.setTrack(t);
+          useStore.setState({ trackInfo: { key: selKey, points: t.length, error: null } });
+        })
+        .catch((e) => alive && useStore.setState({ trackInfo: { key: selKey, points: 0, error: e instanceof Error ? e.message : String(e) } }));
+    load();
+    const id = window.setInterval(load, 60000);
+    return () => {
+      alive = false;
+      ctrl.abort();
+      window.clearInterval(id);
+    };
+  }, [selKey]);
+
+  // Airport ground charts: selected airport, or the airport a selected aircraft is at / near.
+  useEffect(() => onChartsChange(() => controller?.refreshCharts()), []);
+  const selAirport = useStore((s) => (s.selection?.kind === 'airport' ? s.selection.icao : null));
+  useEffect(() => {
+    if (selAirport) loadChart(selAirport);
+  }, [selAirport]);
+  const nearIcao = useStore((s) => {
+    const sel = s.selection;
+    const f = sel?.kind === 'flight' ? s.flightMap.get(sel.key) : undefined;
+    if (!f) return null;
+    if (f.onGround || (f.departureDistance ?? 99) < 8) return f.dep ?? null;
+    if ((f.arrivalDistance ?? 99) < 25) return f.arr ?? null;
+    return null;
+  });
+  useEffect(() => {
+    if (nearIcao && getAirport(nearIcao)) loadChart(nearIcao);
+  }, [nearIcao]);
 
   // Weather radar frame: refreshed every 10 minutes while the layer is on.
   const weatherOn = useStore((s) => s.prefs.layers.weather);

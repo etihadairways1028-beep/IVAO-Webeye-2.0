@@ -4,6 +4,8 @@ import { fetchSimbrief } from '../data/simbrief';
 import { selectFlight } from '../lib/actions';
 import { dash, fmtAlt, fmtDuration, fmtKt, fmtNm, fmtZulu, ago } from '../lib/format';
 import { Badge, KV, Panel, Section } from './ui';
+import { Navlog } from './Navlog';
+import { flightProgress } from '../lib/progress';
 import { IconFollow, IconImport, IconPlane, IconRoute, IconUser, IconX } from './Icons';
 
 /**
@@ -28,6 +30,7 @@ export function MyFlight() {
     return prefs.myVid && Number.isFinite(n) ? flights.find((f) => f.vid === n) ?? null : null;
   }, [flights, prefs.myVid]);
   const planFlight = useMemo(() => (plan ? flights.find((f) => f.callsign === plan.callsign.toUpperCase()) ?? null : null), [plan, flights]);
+  const progress = useMemo(() => (planFlight && plan ? flightProgress(planFlight, plan) : null), [planFlight, plan]);
 
   const saveVid = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +64,7 @@ export function MyFlight() {
   };
 
   return (
-    <Panel side="left" label="My flight" icon={<IconUser size={18} />} title="My flight" sub="Track your VID · import SimBrief" onClose={() => setPanel(null)}>
+    <Panel side="left" className={plan ? "wide" : ""} label="My flight" icon={<IconUser size={18} />} title="My flight" sub="Track your VID · import SimBrief" onClose={() => setPanel(null)}>
       <Section title="Track by IVAO VID" icon={<IconFollow size={15} />}>
         <form className="inline-form" onSubmit={saveVid}>
           <input className="input mono" inputMode="numeric" placeholder="e.g. 123456" value={vid} onChange={(e) => setVid(e.target.value)} aria-label="Your IVAO VID" />
@@ -118,6 +121,7 @@ export function MyFlight() {
                 <div className="mono strong ofp-cs">{plan.callsign}</div>
                 <div className="dim small">
                   {plan.aircraft}
+                  {plan.aircraftName ? ` · ${plan.aircraftName}` : ''}
                   {plan.registration ? ` · ${plan.registration}` : ''}
                 </div>
               </div>
@@ -136,30 +140,69 @@ export function MyFlight() {
                 <div className="dim small">{plan.destination.rwy ? `RWY ${plan.destination.rwy}` : plan.destination.name}</div>
               </div>
             </div>
+            {progress && progress.source === 'plan' && planFlight && (
+              <div className="ofp-progress">
+                <div className="rs-track">
+                  <div className="rs-fill" style={{ width: `${(progress.pct ?? 0) * 100}%` }} />
+                </div>
+                <div className="ofp-progress-row mono">
+                  <span>
+                    {Math.round(progress.flownNm ?? 0)}/{Math.round(progress.totalNm ?? 0)} NM
+                  </span>
+                  <span>{progress.eta ? `ETA ${fmtZulu(progress.eta)} in ${fmtDuration(progress.ete)}` : planFlight.onGround ? 'On ground' : '—'} / {Math.round(progress.remainingNm ?? 0)} NM</span>
+                </div>
+                {progress.offRouteNm != null && progress.offRouteNm > 10 && <p className="warn small">Aircraft is {Math.round(progress.offRouteNm)} NM off the planned route.</p>}
+              </div>
+            )}
             <div className="grid-kv">
               <KV k="Initial alt" v={plan.cruise ? fmtAlt(Number(plan.cruise), prefs.transitionAlt) : dash} />
-              <KV k="Distance" v={fmtNm(plan.distanceNm)} />
+              <KV k="Route dist" v={fmtNm(plan.distanceNm ?? plan.totalNm)} />
               <KV k="Air time" v={fmtDuration(plan.airTime)} />
-              <KV k="Alternate" v={plan.alternate ?? dash} />
-              <KV k="Sched out" v={plan.schedOut ? fmtZulu(plan.schedOut * 1000) : dash} />
-              <KV k="Sched in" v={plan.schedIn ? fmtZulu(plan.schedIn * 1000) : dash} />
-              <KV k="Block fuel" v={plan.fuelBlock ? `${Number(plan.fuelBlock).toLocaleString('en-US')} ${plan.units ?? ''}` : dash} />
+              <KV k="Block time" v={fmtDuration(plan.blockTime)} />
+              <KV k="Off blocks" v={plan.schedOut ? fmtZulu(plan.schedOut * 1000) : dash} />
+              <KV k="Takeoff" v={plan.estOff ? fmtZulu(plan.estOff * 1000) : dash} />
+              <KV k="Landing" v={plan.estOn ? fmtZulu(plan.estOn * 1000) : dash} />
+              <KV k="On blocks" v={plan.schedIn ? fmtZulu(plan.schedIn * 1000) : dash} />
+              <KV k="Block fuel" v={plan.fuel.block != null ? `${plan.fuel.block.toLocaleString('en-US')} ${plan.units ?? ''}` : dash} />
+              <KV k="Trip fuel" v={plan.fuel.trip != null ? `${plan.fuel.trip.toLocaleString('en-US')} ${plan.units ?? ''}` : dash} />
+              <KV k="ZFW" v={plan.weights.zfw != null ? plan.weights.zfw.toLocaleString('en-US') : dash} />
+              <KV k="TOW" v={plan.weights.tow != null ? plan.weights.tow.toLocaleString('en-US') : dash} />
+              <KV k="Pax" v={plan.weights.pax ?? dash} />
               <KV k="Cost index" v={plan.costIndex ?? dash} />
+              <KV k="Avg wind" v={plan.avgWind ?? dash} />
+              <KV k="Alternate" v={plan.alternate ?? dash} />
             </div>
             <div className="route-text mono">{plan.route || dash}</div>
-            <div className="ofp-foot">
+            {plan.stepClimbs && <div className="dim small mono step">Steps: {plan.stepClimbs}</div>}
+            <div className="ofp-actions">
               {planFlight ? (
-                <button className="btn full" onClick={() => selectFlight(planFlight, { frame: 'route' })}>
-                  <IconPlane size={15} /> Live: {planFlight.callsign} is online — show
+                <button className="btn" onClick={() => selectFlight(planFlight, { frame: 'route' })}>
+                  <IconPlane size={15} /> {planFlight.callsign} is online — show
                 </button>
               ) : (
-                <span className="dim small">No live IVAO flight with callsign {plan.callsign} yet. The plan stays on the map.</span>
+                <span className="dim small">Not online yet as {plan.callsign}. Connect with this callsign and the live aircraft is matched automatically.</span>
               )}
-              {plan.generatedAt && <span className="dim small mono">OFP generated {ago(plan.generatedAt * 1000)}</span>}
+              {plan.pdfUrl && (
+                <a className="btn ghost" href={plan.pdfUrl} target="_blank" rel="noopener noreferrer">
+                  OFP PDF
+                </a>
+              )}
             </div>
+            <div className="navlog-head">
+              <h4>Navlog · {plan.fixes.length} waypoints</h4>
+              {plan.generatedAt && <span className="dim small mono">generated {ago(plan.generatedAt * 1000)}</span>}
+            </div>
+            <Navlog plan={plan} live={planFlight} progress={progress} />
+            {(plan.origin.metar || plan.destination.metar) && (
+              <details className="remarks">
+                <summary>METAR at planning time</summary>
+                {plan.origin.metar && <div className="mono">{plan.origin.metar}</div>}
+                {plan.destination.metar && <div className="mono">{plan.destination.metar}</div>}
+              </details>
+            )}
           </div>
         )}
-        <p className="fineprint">Fetched from SimBrief’s public OFP endpoint. The planned route (teal) is drawn from your navlog fixes; it is your plan, not an IVAO record.</p>
+        <p className="fineprint">Fetched from SimBrief’s public OFP endpoint. The planned route (purple) is drawn from your navlog fixes; it is your plan, not an IVAO record.</p>
       </Section>
     </Panel>
   );

@@ -10,6 +10,7 @@ import { AircraftDetailsPanel } from './components/AircraftDetailsPanel';
 import { MapLayerControls } from './components/MapLayerControls';
 import { SettingsPanel, SHORTCUTS } from './components/SettingsPanel';
 import { MapControls } from './components/MapControls';
+import { TelemetryBar } from './components/TelemetryBar';
 import { IconAlert, IconPlane, IconRunway, IconTower, IconUser, IconX } from './components/Icons';
 import { loadAirports } from './data/airports';
 import { startFeed, retryNow } from './data/feed';
@@ -203,6 +204,7 @@ export default function App() {
       {panel === 'myflight' && <MyFlight />}
       {selFlight && <AircraftDetailsPanel key={selFlight.key} flight={selFlight} />}
       {!selFlight && selAtc && <AtcDetailsPanel key={selAtc.key} c={selAtc} />}
+      {selFlight && <TelemetryBar f={selFlight} />}
       <MapControls />
       {overlay === 'layers' && <MapLayerControls />}
       {overlay === 'settings' && <SettingsPanel />}

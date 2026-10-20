@@ -1977,3 +1977,209 @@ table.rwy {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ───────────────────────── v2.1: wide panel, navlog, telemetry strip, charts */
+.panel-left.wide {
+  width: 452px;
+}
+.ofp-progress {
+  margin: 4px 0 12px;
+}
+.ofp-progress .rs-track {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.ofp-progress .rs-fill {
+  background: linear-gradient(90deg, #8b5cf6, #ff4fc3);
+}
+.ofp-progress-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--ink-2);
+  margin-top: 7px;
+}
+.ofp-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 10px;
+}
+.ofp-actions a.btn {
+  text-decoration: none;
+}
+.step {
+  margin-top: 6px;
+  word-break: break-word;
+}
+.navlog-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 16px 0 6px;
+}
+.navlog-head h4 {
+  margin: 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-2);
+}
+.navlog-wrap {
+  margin: 0 -4px;
+}
+table.navlog {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.navlog th {
+  position: sticky;
+  top: -2px;
+  background: rgba(14, 20, 36, 0.98);
+  font: 600 9.5px var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+  text-align: left;
+  padding: 6px 4px;
+  z-index: 1;
+}
+.navlog .r {
+  text-align: right;
+}
+.navlog td {
+  padding: 6px 4px;
+  border-top: 1px solid var(--line);
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+.navlog tbody tr {
+  cursor: pointer;
+}
+.navlog tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.04);
+}
+.navlog tr.passed td {
+  color: var(--faint);
+}
+.navlog tr.passed .strong {
+  color: var(--dim);
+}
+.navlog tr.next td {
+  background: rgba(139, 92, 246, 0.14);
+  color: var(--ink);
+}
+.navlog tr.apt .strong {
+  color: #c4b5fd;
+}
+.next-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff4fc3;
+  margin-right: 5px;
+  vertical-align: 1px;
+  box-shadow: 0 0 6px #ff4fc3;
+}
+.rs-eta {
+  display: block;
+  margin-top: 2px;
+  color: #ffb3e6;
+}
+.lg-trail {
+  border-color: #ff4fc3;
+}
+.lg-rem {
+  border-top: 2px dotted #ff4fc3;
+}
+.lg-plan {
+  border-color: #8b5cf6;
+}
+.chart-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(242, 204, 77, 0.08), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(242, 204, 77, 0.22);
+}
+.chart-card-text {
+  flex: 1;
+  min-width: 0;
+}
+.telebar {
+  position: absolute;
+  bottom: 14px;
+  left: 100px;
+  right: 470px;
+  width: fit-content;
+  max-width: calc(100% - 570px);
+  margin: 0 auto;
+  z-index: 13;
+  border-radius: 16px;
+  overflow: hidden;
+  animation: pop 0.25s var(--ease);
+}
+.has-left .telebar {
+  left: 462px;
+  max-width: calc(100% - 932px);
+}
+.has-left:has(.panel-left.wide) .telebar {
+  left: 554px;
+  max-width: calc(100% - 1024px);
+}
+.telebar-cells {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tcell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 14px 7px;
+  border-left: 1px solid var(--line);
+  min-width: 92px;
+}
+.tcell:first-child {
+  border-left: 0;
+}
+.tk {
+  font-size: 10px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+.tv {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.telebar-progress {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.telebar-progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #8b5cf6, #ff4fc3);
+  transition: width 1s linear;
+}
+@media (max-width: 1100px) {
+  .telebar {
+    display: none;
+  }
+}
+@media (max-width: 759px) {
+  .panel-left.wide {
+    width: auto;
+  }
+  .panel-left.wide {
+    max-height: 70vh;
+  }
+}
