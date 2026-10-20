@@ -28,6 +28,17 @@ No API keys are required.
 | Coastlines / borders | Natural Earth 1:50m (public domain), bundled | Powers Radar mode and the offline fallback basemap. |
 | Basemaps | CARTO Dark Matter / Voyager, Esri World Imagery | Attribution shown on-map. CARTO basemaps are free for non-commercial use; check CARTO/Esri terms before commercial deployment. |
 
+## Free domain: Cloudflare Pages (recommended)
+
+Cloudflare Pages gives a free `<name>.pages.dev` address and runs `functions/proxy/[[path]].js`,
+so IVAO, SimBrief, weather and OpenStreetMap requests go through your own domain (no CORS issues).
+
+1. Sign in at https://dash.cloudflare.com → **Workers & Pages → Create → Pages → Connect to Git**.
+2. Pick this repository. Project name = your subdomain (e.g. `webeye-live` → `webeye-live.pages.dev`).
+3. Framework preset **None**, build command `npm run build`, output directory `dist`. Save and deploy.
+
+No environment variables are needed: the app uses the built-in `/proxy/*` routes there.
+
 ## Deploy to GitHub Pages
 
 1. Push to `main`. 2. In the repo: **Settings → Pages → Source: GitHub Actions**.

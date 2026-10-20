@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../state/store';
-import { IconExpand, IconLayers, IconLogo, IconRadar, IconSearch, IconSettings, IconShrink } from './Icons';
+import { IconExpand, IconInfo, IconLayers, IconLogo, IconRadar, IconSearch, IconSettings, IconShrink } from './Icons';
 import { FlightSearch } from './FlightSearch';
 import { toggleFullscreen } from '../lib/actions';
 import { ago, fmtZulu } from '../lib/format';
@@ -74,9 +74,9 @@ export function TopNavigation({ visibleCount }: { visibleCount: number }) {
       </div>
       <div className="brand-text">
           <span className="brand-name">
-            IVAO WebEye<span className="brand-ver">2.1</span>
+            WebEye<span className="brand-ver">2.1</span>
           </span>
-          <span className="brand-sub">Live network map</span>
+          <span className="brand-sub">IVAO live traffic · community edition</span>
       </div>
       <StatusPill />
       <div className="stats" aria-label="Network statistics">
@@ -102,6 +102,9 @@ export function TopNavigation({ visibleCount }: { visibleCount: number }) {
         </button>
         <button className={`icon-btn ${overlay === 'layers' ? 'on' : ''}`} aria-label="Map layers" title="Map layers (M)" aria-expanded={overlay === 'layers'} onClick={() => setOverlay(overlay === 'layers' ? null : 'layers')}>
           <IconLayers />
+        </button>
+        <button className={`icon-btn ${overlay === 'about' ? 'on' : ''}`} aria-label="About WebEye" title="About" aria-expanded={overlay === 'about'} onClick={() => setOverlay(overlay === 'about' ? null : 'about')}>
+          <IconInfo />
         </button>
         <button className={`icon-btn ${overlay === 'settings' ? 'on' : ''}`} aria-label="Settings" title="Settings" aria-expanded={overlay === 'settings'} onClick={() => setOverlay(overlay === 'settings' ? null : 'settings')}>
           <IconSettings />

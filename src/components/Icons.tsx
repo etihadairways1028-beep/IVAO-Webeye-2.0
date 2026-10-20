@@ -174,6 +174,12 @@ export const IconBack = (p: P) => (
     <path d="M15 6l-6 6 6 6" />
   </Svg>
 );
+export const IconInfo = (p: P) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 11v5.5M12 7.8h.01" />
+  </Svg>
+);
 export const IconLogo = ({ size = 28 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
     <rect width="32" height="32" rx="6" fill="#3d8bfd" />

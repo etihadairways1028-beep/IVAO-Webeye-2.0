@@ -11,6 +11,8 @@ import { MapLayerControls } from './components/MapLayerControls';
 import { SettingsPanel, SHORTCUTS } from './components/SettingsPanel';
 import { MapControls } from './components/MapControls';
 import { TelemetryBar } from './components/TelemetryBar';
+import { About } from './components/About';
+import { IconLogo } from './components/Icons';
 import { IconAlert, IconPlane, IconRunway, IconTower, IconUser, IconX } from './components/Icons';
 import { loadAirports } from './data/airports';
 import { startFeed, retryNow } from './data/feed';
@@ -209,6 +211,15 @@ export default function App() {
       {overlay === 'layers' && <MapLayerControls />}
       {overlay === 'settings' && <SettingsPanel />}
       {overlay === 'help' && <Shortcuts />}
+      {overlay === 'about' && <About />}
+      {!airportsReady && (
+        <div className="splash" role="status" aria-live="polite">
+          <IconLogo size={44} />
+          <div className="splash-name">WebEye</div>
+          <div className="splash-bar"><span /></div>
+          <div className="dim small">Loading airport database…</div>
+        </div>
+      )}
       <Toast />
     </div>
   );

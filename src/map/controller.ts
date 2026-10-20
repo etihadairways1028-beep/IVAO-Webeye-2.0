@@ -187,7 +187,7 @@ export class MapController {
     m.addLayer({ id: 'atc-ring-line', type: 'line', source: 'atc-rings', layout: { visibility: this.vis('atc') }, paint: { 'line-color': ['get', 'color'], 'line-opacity': ['case', ['get', 'sel'], 0.95, 0.45], 'line-width': ['case', ['get', 'sel'], 1.6, 0.8] } });
 
     src('runways', this.runways);
-    m.addLayer({ id: 'runways', type: 'line', source: 'runways', minzoom: 9, layout: { 'line-cap': 'butt' }, paint: { 'line-color': dark ? '#9fb4d8' : '#334155', 'line-width': ['interpolate', ['exponential', 2], ['zoom'], 9, 2, 14, 18] } });
+    m.addLayer({ id: 'runways', type: 'line', source: 'runways', minzoom: 9, layout: { 'line-cap': 'butt' }, paint: { 'line-color': dark ? '#4a5770' : '#64748b', 'line-width': ['interpolate', ['exponential', 2], ['zoom'], 9, 2, 14, 14] } });
     m.addLayer({ id: 'runway-labels', type: 'symbol', source: 'runways', minzoom: 11, layout: { 'symbol-placement': 'line-center', 'text-field': ['get', 'name'], 'text-font': FONT_BOLD, 'text-size': 11, 'text-keep-upright': true }, paint: { 'text-color': textColor, 'text-halo-color': halo, 'text-halo-width': 1.4 } });
 
     src('airports');

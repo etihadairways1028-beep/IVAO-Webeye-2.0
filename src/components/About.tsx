@@ -1,0 +1,73 @@
+import { useStore } from '../state/store';
+import { IconLogo, IconX } from './Icons';
+
+export const APP_VERSION = '2.1';
+
+/** Product information, data attribution and the independence notice. */
+export function About() {
+  const setOverlay = useStore((s) => s.setOverlay);
+  return (
+    <div className="popover glass center about" role="dialog" aria-label="About WebEye">
+      <div className="popover-head">
+        <div className="about-brand">
+          <IconLogo size={30} />
+          <div>
+            <h2>WebEye {APP_VERSION}</h2>
+            <div className="dim small">Live traffic viewer for the IVAO network</div>
+          </div>
+        </div>
+        <button className="icon-btn small" aria-label="Close" onClick={() => setOverlay(null)}>
+          <IconX size={16} />
+        </button>
+      </div>
+      <p className="about-text">
+        WebEye shows pilots and air traffic controllers connected to the International Virtual Aviation Organisation in real time, with flight
+        details, SimBrief flight plans, airport information and ground charts.
+      </p>
+      <div className="notice" role="note">
+        <strong>Independent community project.</strong> WebEye 2.x is a concept built by IVAO members. It is not an official IVAO service and is not
+        endorsed by IVAO. “IVAO” is a trademark of its owner. For simulation use only; never use it for real-world navigation.
+      </div>
+      <div className="pop-label">Data sources</div>
+      <table className="about-table">
+        <tbody>
+          <tr>
+            <th>Traffic and ATC</th>
+            <td>IVAO Whazzup API (public)</td>
+          </tr>
+          <tr>
+            <th>Flight plans</th>
+            <td>SimBrief by Navigraph</td>
+          </tr>
+          <tr>
+            <th>Airports, runways</th>
+            <td>OurAirports</td>
+          </tr>
+          <tr>
+            <th>Ground charts</th>
+            <td>© OpenStreetMap contributors</td>
+          </tr>
+          <tr>
+            <th>Weather</th>
+            <td>NOAA Aviation Weather Center, RainViewer</td>
+          </tr>
+          <tr>
+            <th>Base maps</th>
+            <td>© CARTO, Esri, Natural Earth</td>
+          </tr>
+        </tbody>
+      </table>
+      <div className="about-links">
+        <a className="link-btn" href="https://github.com/etihadairways1028-beep/IVAO-Webeye-2.0" target="_blank" rel="noopener noreferrer">
+          Source code
+        </a>
+        <a className="link-btn" href="https://www.ivao.aero" target="_blank" rel="noopener noreferrer">
+          ivao.aero
+        </a>
+        <button className="link-btn" onClick={() => setOverlay('help')}>
+          Keyboard shortcuts
+        </button>
+      </div>
+    </div>
+  );
+}

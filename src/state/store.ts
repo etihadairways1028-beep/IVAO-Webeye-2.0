@@ -80,7 +80,7 @@ interface State {
   follow: boolean;
   showRoute: boolean;
   panel: Panel | null;
-  overlay: 'layers' | 'settings' | 'help' | null;
+  overlay: 'layers' | 'settings' | 'help' | 'about' | null;
   viewBounds: [number, number, number, number] | null;
   camera: CameraRequest | null;
   plan: SimbriefPlan | null;
