@@ -71,12 +71,12 @@ export function TopNavigation({ visibleCount }: { visibleCount: number }) {
     <header className={`topbar glass ${mobileSearch ? 'searching' : ''}`}>
       <div className="brand">
         <IconLogo />
-        <div className="brand-text">
+      </div>
+      <div className="brand-text">
           <span className="brand-name">
-            WebEye<span className="brand-ver">2.0</span>
+            IVAO WebEye<span className="brand-ver">2.1</span>
           </span>
-          <span className="brand-sub">IVAO network</span>
-        </div>
+          <span className="brand-sub">Live network map</span>
       </div>
       <StatusPill />
       <div className="stats" aria-label="Network statistics">

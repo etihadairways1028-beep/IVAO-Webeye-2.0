@@ -33,10 +33,10 @@ export function offlineStyle(kind: 'dark' | 'light'): StyleSpecification {
       borders: { type: 'geojson', data: `${base}data/borders.geojson` },
     },
     layers: [
-      { id: 'background', type: 'background', paint: { 'background-color': dark ? '#060a12' : '#cfdbe8' } },
-      { id: 'land', type: 'fill', source: 'land', paint: { 'fill-color': dark ? '#0f1626' : '#f3f1ec' } },
-      { id: 'coast', type: 'line', source: 'land', paint: { 'line-color': dark ? '#1d2840' : '#b9c6d6', 'line-width': 0.8 } },
-      { id: 'borders', type: 'line', source: 'borders', paint: { 'line-color': dark ? '#26324d' : '#c3c9d3', 'line-width': 0.7 } },
+      { id: 'background', type: 'background', paint: { 'background-color': dark ? '#0e2240' : '#cfdbe8' } },
+      { id: 'land', type: 'fill', source: 'land', paint: { 'fill-color': dark ? '#080b11' : '#f3f1ec' } },
+      { id: 'coast', type: 'line', source: 'land', paint: { 'line-color': dark ? '#2b4d80' : '#b9c6d6', 'line-width': 0.9 } },
+      { id: 'borders', type: 'line', source: 'borders', paint: { 'line-color': dark ? '#3a4d70' : '#c3c9d3', 'line-width': 0.7, 'line-dasharray': [3, 2] } },
     ],
   };
 }
@@ -98,10 +98,12 @@ export function tintDark(style: StyleSpecification): StyleSpecification {
   const layers = style.layers.map((l) => {
     const id = l.id.toLowerCase();
     const paint = { ...(l as { paint?: Record<string, unknown> }).paint };
-    if (l.type === 'background') paint['background-color'] = '#0a0f1a';
-    else if (l.type === 'fill' && id.includes('water')) paint['fill-color'] = '#060a12';
-    else if (l.type === 'fill' && /landcover|park|landuse/.test(id)) paint['fill-color'] = '#0c1220';
-    else if (l.type === 'line' && /boundary|admin/.test(id)) paint['line-color'] = '#2a3550';
+    // Chart-like palette: black land, navy water, quiet blue borders.
+    if (l.type === 'background') paint['background-color'] = '#080b11';
+    else if (l.type === 'fill' && id.includes('water')) paint['fill-color'] = '#0e2240';
+    else if (l.type === 'line' && id.includes('water')) paint['line-color'] = '#1d3a66';
+    else if (l.type === 'fill' && /landcover|park|landuse/.test(id)) paint['fill-color'] = '#0b0f17';
+    else if (l.type === 'line' && /boundary|admin/.test(id)) paint['line-color'] = '#3a4d70';
     return { ...l, paint } as typeof l;
   });
   return { ...style, layers };

@@ -174,16 +174,9 @@ export const IconBack = (p: P) => (
     <path d="M15 6l-6 6 6 6" />
   </Svg>
 );
-export const IconLogo = ({ size = 26 }: { size?: number }) => (
+export const IconLogo = ({ size = 28 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-    <defs>
-      <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stopColor="#9cc7ff" />
-        <stop offset="1" stopColor="#3d7bff" />
-      </linearGradient>
-    </defs>
-    <circle cx="16" cy="16" r="14.5" fill="none" stroke="url(#lg)" strokeWidth="1.4" opacity="0.55" />
-    <circle cx="16" cy="16" r="9" fill="none" stroke="url(#lg)" strokeWidth="1" opacity="0.35" />
-    <path d="M16 5.5l1.9 7.2 7.6 3.6v1.9l-7.6-2.1-.5 5.4 2.5 1.9v1.5L16 23.8l-3.9 1.1v-1.5l2.5-1.9-.5-5.4-7.6 2.1v-1.9l7.6-3.6z" fill="url(#lg)" />
+    <rect width="32" height="32" rx="6" fill="#3d8bfd" />
+    <path d="M16 5.5l1.9 7.2 7.6 3.6v1.9l-7.6-2.1-.5 5.4 2.5 1.9v1.5L16 23.8l-3.9 1.1v-1.5l2.5-1.9-.5-5.4-7.6 2.1v-1.9l7.6-3.6z" fill="#fff" />
   </svg>
 );

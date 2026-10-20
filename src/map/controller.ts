@@ -127,7 +127,7 @@ export class MapController {
   private baseColor(): string {
     if (this.styleId === 'radar') return '#7cf2b4';
     if (this.styleId === 'standard') return '#1e40af';
-    return '#e3ebff';
+    return '#ffd23f';
   }
 
   private aircraftColor(): ExpressionSpecification {
@@ -135,7 +135,7 @@ export class MapController {
       this.prefs.colorBy === 'altitude'
         ? (['interpolate', ['linear'], ['get', 'alt'], ...ALT_RAMP.flat()] as unknown as ExpressionSpecification)
         : (['case', ['get', 'gnd'], this.styleId === 'standard' ? '#64748b' : '#7d8aa5', this.baseColor()] as ExpressionSpecification);
-    return ['case', ['get', 'sel'], '#ffb547', ['get', 'mine'], '#3ff0d0', base];
+    return ['case', ['get', 'sel'], '#ff4fc3', ['get', 'mine'], '#2fd6b5', base];
   }
 
   private labelExpr(mode: LabelMode): ExpressionSpecification {
@@ -158,6 +158,16 @@ export class MapController {
 
     // Weather radar (RainViewer) sits directly above the basemap.
     if (this.radar && this.prefs.layers.weather) this.addWeather();
+
+    // Lat/long graticule every 10°, like an en-route chart.
+    if (this.styleId !== 'satellite') {
+      const grid: GeoJSON.Feature[] = [];
+      for (let lon = -180; lon <= 180; lon += 10) grid.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[lon, -85], [lon, 85]] }, properties: { l: `${Math.abs(lon)}°${lon < 0 ? 'W' : lon > 0 ? 'E' : ''}` } });
+      for (let lat = -80; lat <= 80; lat += 10) grid.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: Array.from({ length: 37 }, (_, i) => [-180 + i * 10, lat]) }, properties: { l: `${Math.abs(lat)}°${lat < 0 ? 'S' : lat > 0 ? 'N' : ''}` } });
+      src('graticule', { type: 'FeatureCollection', features: grid });
+      m.addLayer({ id: 'graticule', type: 'line', source: 'graticule', paint: { 'line-color': dark ? '#2f5f8f' : '#94a3b8', 'line-width': 0.6, 'line-opacity': 0.45 } });
+      m.addLayer({ id: 'graticule-labels', type: 'symbol', source: 'graticule', minzoom: 3, layout: { 'symbol-placement': 'line', 'symbol-spacing': 600, 'text-field': ['get', 'l'], 'text-font': FONT_REG, 'text-size': 9.5 }, paint: { 'text-color': dark ? '#4f86b8' : '#64748b', 'text-halo-color': halo, 'text-halo-width': 1 } });
+    }
 
     // Airport ground chart (OpenStreetMap): drawn under everything else.
     src('chart', allCharts());
@@ -196,7 +206,7 @@ export class MapController {
 
     src('route');
     m.addLayer({ id: 'route-ref', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'ref'], paint: { 'line-color': dark ? '#ffffff' : '#0f172a', 'line-opacity': 0.22, 'line-width': 1.2, 'line-dasharray': [2, 3] } });
-    m.addLayer({ id: 'route-remaining', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'remaining'], layout: { 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLORS.remaining, 'line-opacity': 0.9, 'line-width': 2, 'line-dasharray': [0.6, 2.2] } });
+    m.addLayer({ id: 'route-remaining', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'remaining'], layout: { 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLORS.remaining, 'line-opacity': 0.95, 'line-width': 1.6, 'line-dasharray': [1, 2.5] } });
     m.addLayer({ id: 'route-trail', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'trail'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLORS.flown, 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 2.4, 14, 3.5], 'line-opacity': 0.95 } });
     m.addLayer({ id: 'route-ends', type: 'circle', source: 'route', filter: ['==', ['get', 'kind'], 'end'], paint: { 'circle-radius': 5, 'circle-color': dark ? '#0b1222' : '#fff', 'circle-stroke-color': ROUTE_COLORS.flown, 'circle-stroke-width': 2 } });
     m.addLayer({ id: 'route-end-labels', type: 'symbol', source: 'route', filter: ['==', ['get', 'kind'], 'end'], layout: { 'text-field': ['get', 'icao'], 'text-font': FONT_BOLD, 'text-size': 11.5, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-allow-overlap': true }, paint: { 'text-color': '#ffb3e6', 'text-halo-color': halo, 'text-halo-width': 1.5 } });
@@ -205,14 +215,14 @@ export class MapController {
     m.addLayer({ id: 'history', type: 'circle', source: 'history', layout: { visibility: this.styleId === 'radar' && this.prefs.layers.trails ? 'visible' : 'none' }, paint: { 'circle-radius': 1.4, 'circle-color': '#7cf2b4', 'circle-opacity': ['get', 'o'] } });
 
     src('aircraft');
-    m.addLayer({ id: 'sel-halo', type: 'circle', source: 'aircraft', filter: ['any', ['get', 'sel'], ['get', 'mine']], paint: { 'circle-radius': 17, 'circle-color': ['case', ['get', 'sel'], 'rgba(255,181,71,0.14)', 'rgba(63,240,208,0.12)'], 'circle-stroke-color': ['case', ['get', 'sel'], 'rgba(255,181,71,0.7)', 'rgba(63,240,208,0.6)'], 'circle-stroke-width': 1.2 } });
+    m.addLayer({ id: 'sel-halo', type: 'circle', source: 'aircraft', filter: ['any', ['get', 'sel'], ['get', 'mine']], paint: { 'circle-radius': 17, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': ['case', ['get', 'sel'], '#ff4fc3', '#2fd6b5'], 'circle-stroke-width': 1.5 } });
     m.addLayer({
       id: 'aircraft',
       type: 'symbol',
       source: 'aircraft',
       layout: {
         'icon-image': this.styleId === 'radar' ? 'ac-radar' : ['match', ['get', 'wake'], 'L', 'ac-L', 'H', 'ac-H', 'J', 'ac-J', 'ac-M'],
-        'icon-size': ['interpolate', ['linear'], ['zoom'], 1.5, this.styleId === 'radar' ? 0.42 : 0.5, 6, this.styleId === 'radar' ? 0.6 : 0.78, 11, 1.05],
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 1.5, this.styleId === 'radar' ? 0.45 : 0.62, 6, this.styleId === 'radar' ? 0.65 : 0.92, 11, 1.2],
         'icon-rotate': ['get', 'hdg'],
         'icon-rotation-alignment': 'map',
         'icon-allow-overlap': true,
@@ -232,7 +242,7 @@ export class MapController {
         'icon-color': this.aircraftColor(),
         'icon-halo-color': this.dark ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.9)',
         'icon-halo-width': 1,
-        'text-color': ['case', ['get', 'sel'], '#ffcf85', ['get', 'mine'], '#8ff7e4', this.styleId === 'radar' ? '#9df5c6' : textColor],
+        'text-color': ['case', ['get', 'sel'], '#ff9be0', ['get', 'mine'], '#7ff0da', this.styleId === 'radar' ? '#9df5c6' : textColor],
         'text-halo-color': halo,
         'text-halo-width': 1.4,
       },
@@ -528,9 +538,11 @@ export class MapController {
   /** Keep the subject clear of floating panels. */
   padding(extra = 0) {
     const w = window.innerWidth;
-    if (w < 760) return { top: 80 + extra, bottom: Math.round(window.innerHeight * 0.42) + extra, left: 20 + extra, right: 20 + extra };
+    if (w < 760) return { top: 20 + extra, bottom: Math.round(window.innerHeight * 0.45) + extra, left: 20 + extra, right: 20 + extra };
+    // The map element starts right of the sidebar and below the top bar; panels dock on top of it.
     const st = document.documentElement.dataset;
-    return { top: 80 + extra, bottom: 40 + extra, left: (st.leftPanel === '1' ? 440 : 90) + extra, right: (st.rightPanel === '1' ? 420 : 30) + extra };
+    const panel = w < 1180 ? 340 : 384;
+    return { top: 30 + extra, bottom: (st.rightPanel === '1' ? 70 : 30) + extra, left: (st.leftPanel === '1' ? panel + 20 : 30) + extra, right: (st.rightPanel === '1' ? panel + 60 : 60) + extra };
   }
 
   // ───────── loop & events
