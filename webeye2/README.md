@@ -1,0 +1,66 @@
+# IVAO WebEye 2.0
+
+A next-generation, map-first traffic viewer for the IVAO network — live pilots and ATC,
+airport explorer, radar mode, SimBrief import and "track my VID".
+
+React 18 · TypeScript · Vite · MapLibre GL JS · Zustand
+
+## Run it
+
+```bash
+npm install
+npm run dev        # http://localhost:5173  (live IVAO data through the built-in proxy)
+npm run build      # typecheck + production build into dist/
+npm run preview    # serve dist/ with the same proxy on http://localhost:4173
+```
+
+No API keys are required.
+
+## Data sources
+
+| What | Source | Notes |
+|---|---|---|
+| Pilots, ATC, network counts | IVAO Whazzup v2 `GET https://api.ivao.aero/v2/tracker/whazzup` | Public, unauthenticated. IVAO refreshes it every 15 s; the app never polls faster, pauses when the tab is hidden and backs off on errors. |
+| Flight plans (OFP) | SimBrief `api/xml.fetcher.php?username=…&json=1` | Username or numeric pilot ID. |
+| METAR / TAF | NOAA Aviation Weather Center Data API | Real-world weather; IVAO sessions may differ. |
+| Weather radar | RainViewer Weather Maps API | Free tier tiles are limited to zoom ≤ 7. |
+| Airports & runways | OurAirports (public domain), bundled in `public/data` | Rebuild with `npm run build:data <dir>` after downloading `airports.csv` + `runways.csv`. |
+| Coastlines / borders | Natural Earth 1:50m (public domain), bundled | Powers Radar mode and the offline fallback basemap. |
+| Basemaps | CARTO Dark Matter / Voyager, Esri World Imagery | Attribution shown on-map. CARTO basemaps are free for non-commercial use; check CARTO/Esri terms before commercial deployment. |
+
+### Proxy / CORS
+
+The browser calls same-origin paths (`/proxy/ivao`, `/proxy/simbrief`, `/proxy/awc`, `/proxy/rainviewer`).
+`vite dev` and `vite preview` forward them (see `vite.config.ts`). For a static deployment, either add
+the same four reverse-proxy rules to your web server (nginx/Cloudflare/Netlify redirects) or point the
+`VITE_*` variables in `.env` at endpoints that send CORS headers (see `.env.example`).
+
+## Honesty rules built into the UI
+
+- Counts in the top bar come straight from Whazzup `connections`; nothing is hard-coded.
+- **Demo mode** (Settings → Data source) generates synthetic flights between real airports. Every demo record is
+  tagged DEMO, the status pill turns amber, a banner stays visible, and switching source clears all records — live and
+  demo traffic are never mixed. When the live feed is unreachable the app says so and offers demo mode; it never switches silently.
+- Values the feed does not provide are labelled: vertical speed is *derived* from consecutive reports, estimated arrival
+  is *calculated* at current groundspeed, ATC rings are *indicative*, the trail is what *this browser observed* since opening.
+- Plotted routes: a SimBrief navlog when loaded; otherwise a dashed great-circle reference (the filed route string is shown as text).
+- Aircraft positions are dead-reckoned between 15 s updates for smooth motion; panels always show the reported values.
+
+## Keyboard
+
+`/` search · `Esc` close · `F` follow · `C` centre · `W` world · `R` radar · `L` labels · `M` layers ·
+`T` traffic · `A` airports · `S` ATC · `P` my flight · `Shift+F` fullscreen · `?` help
+
+## Structure
+
+```
+src/
+  data/      ivao.ts (fetch + normalise), feed.ts (polling, back-off, trails), demo.ts, simbrief.ts, weather.ts, airports.ts
+  map/       controller.ts (MapLibre layers, interpolation, events), FlightMap.tsx, icons.ts (SDF aircraft), styles.ts
+  components/TopNavigation, FlightSearch, TrafficDirectory, AirportExplorer, ATCStations, AircraftDetailsPanel,
+             MyFlight, MapLayerControls, SettingsPanel, MapControls, ui.tsx, Icons.tsx
+  state/     store.ts (Zustand; persisted preferences)
+```
+
+Aircraft are rendered as one GeoJSON symbol layer (SDF icons rotated by heading), so hundreds of aircraft update
+without React re-renders. For flight simulation only — not for real-world navigation or ATC.
