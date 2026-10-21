@@ -67,7 +67,7 @@ export function MapLayerControls() {
       <Toggle icon={<IconTrail size={16} />} label="Trails" hint="Selected aircraft, plus history dots in radar mode" checked={layers.trails} onChange={(v) => setLayer('trails', v)} />
 
       <div className="pop-label">Aircraft labels</div>
-      <Seg label="Label density" value={prefs.labels} onChange={(labels) => setPrefs({ labels })} options={[{ value: 'off', label: 'Off' }, { value: 'callsign', label: 'Callsign' }, { value: 'full', label: 'Data block' }]} />
+      <Seg label="Label density" value={prefs.labels} onChange={(labels) => setPrefs({ labels })} options={[{ value: 'auto', label: 'Auto' }, { value: 'off', label: 'Off' }, { value: 'callsign', label: 'Callsign' }, { value: 'full', label: 'Data block' }]} />
 
       <div className="pop-label">Aircraft colour</div>
       <Seg label="Aircraft colour" value={prefs.colorBy} onChange={(colorBy) => setPrefs({ colorBy })} options={[{ value: 'uniform', label: 'Uniform' }, { value: 'altitude', label: 'By altitude' }]} />

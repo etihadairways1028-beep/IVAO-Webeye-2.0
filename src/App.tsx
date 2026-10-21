@@ -128,7 +128,7 @@ function useShortcuts() {
       else if (k === 'c' && f) s.camera_({ type: 'fly', center: [f.lon, f.lat] });
       else if (k === 'w') s.camera_({ type: 'world' });
       else if (k === 'r') s.setPrefs({ mapStyle: s.prefs.mapStyle === 'radar' ? s.prefs.lastNonRadarStyle : 'radar' });
-      else if (k === 'l') s.setPrefs({ labels: s.prefs.labels === 'off' ? 'callsign' : s.prefs.labels === 'callsign' ? 'full' : 'off' });
+      else if (k === 'l') s.setPrefs({ labels: s.prefs.labels === 'auto' ? 'full' : s.prefs.labels === 'full' ? 'off' : s.prefs.labels === 'off' ? 'callsign' : 'auto' });
       else if (k === 'm') s.setOverlay(s.overlay === 'layers' ? null : 'layers');
       else if (k === '?') s.setOverlay(s.overlay === 'help' ? null : 'help');
       else if (panels[k]) s.setPanel(s.panel === panels[k] ? null : panels[k]);

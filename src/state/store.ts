@@ -3,7 +3,7 @@ import type { Controller, Counts, FeedStatus, Flight, SimbriefPlan, WakeCat } fr
 import { REGIONS, inBox, type Region } from '../lib/geo';
 
 export type MapStyleId = 'dark' | 'standard' | 'satellite' | 'radar';
-export type LabelMode = 'off' | 'callsign' | 'full';
+export type LabelMode = 'auto' | 'off' | 'callsign' | 'full';
 export type Panel = 'traffic' | 'airports' | 'atc' | 'myflight';
 
 export interface Filters {
@@ -34,7 +34,7 @@ export const DEFAULT_FILTERS: Filters = { wake: [], minFl: 0, maxFl: 600, rules:
 const DEFAULT_PREFS: Prefs = {
   mapStyle: 'dark',
   lastNonRadarStyle: 'dark',
-  labels: 'off',
+  labels: 'auto',
   colorBy: 'uniform',
   layers: { airports: true, atc: true, weather: false, trails: true, borders: true },
   pollSec: 15,
@@ -45,7 +45,7 @@ const DEFAULT_PREFS: Prefs = {
   filters: DEFAULT_FILTERS,
 };
 
-const PREFS_KEY = 'webeye2.prefs.v1';
+const PREFS_KEY = 'webeye2.prefs.v2';
 function loadPrefs(): Prefs {
   try {
     const raw = localStorage.getItem(PREFS_KEY);

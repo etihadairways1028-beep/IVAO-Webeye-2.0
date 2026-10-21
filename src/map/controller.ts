@@ -138,10 +138,50 @@ export class MapController {
     return ['case', ['get', 'sel'], '#ff4fc3', ['get', 'mine'], '#2fd6b5', base];
   }
 
+  /**
+   * ATC-style data block: callsign / level (green climbing, amber descending) + groundspeed / type and destination.
+   * 'auto' grows the block with zoom so the map never turns into a wall of text.
+   */
   private labelExpr(mode: LabelMode): ExpressionSpecification {
-    const full: ExpressionSpecification = ['concat', ['get', 'cs'], '\n', ['get', 'fl'], ' ', ['get', 'gs']];
-    const normal: ExpressionSpecification = mode === 'off' ? ['literal', ''] : mode === 'callsign' ? ['get', 'cs'] : full;
-    return ['case', ['any', ['get', 'sel'], ['get', 'mine']], full, normal];
+    const radar = this.styleId === 'radar';
+    const csCol = radar ? '#b6ffd5' : '#ffffff';
+    const sub = radar ? '#9df5c6' : '#cfd8ea';
+    const flCol = ['match', ['get', 'trend'], 'up', '#6ee7a8', 'down', '#ffb347', sub];
+    const cs = ['format', ['get', 'cs'], { 'text-color': csCol }];
+    const block = ['format', ['get', 'cs'], { 'text-color': csCol }, '\n', {}, ['get', 'fl'], { 'text-color': flCol, 'font-scale': 0.95 }, '  ', {}, ['get', 'gs'], { 'text-color': sub, 'font-scale': 0.95 }];
+    const block3 = [...block, '\n', {}, ['get', 'info'], { 'text-color': radar ? '#7fcfa5' : '#93a3c0', 'font-scale': 0.85 }];
+    const none = ['literal', ''];
+    const pick = (normal: unknown) => ['case', ['any', ['get', 'sel'], ['get', 'mine']], block3, normal];
+    let e: unknown;
+    if (mode === 'off') e = pick(none);
+    else if (mode === 'callsign') e = pick(cs);
+    else if (mode === 'full') e = ['step', ['zoom'], pick(block), 6.5, pick(block3)];
+    else e = ['step', ['zoom'], pick(none), 4, pick(cs), 5.6, pick(block), 7.5, pick(block3)];
+    return e as ExpressionSpecification;
+  }
+
+  private addLabelBoxes() {
+    const m = this.map;
+    const mk = (id: string, fill: string, stroke: string) => {
+      if (m.hasImage(id)) return;
+      const S = 32;
+      const c = document.createElement('canvas');
+      c.width = c.height = S;
+      const g = c.getContext('2d')!;
+      g.fillStyle = fill;
+      g.strokeStyle = stroke;
+      g.lineWidth = 2;
+      g.beginPath();
+      g.roundRect(1, 1, S - 2, S - 2, 6);
+      g.fill();
+      g.stroke();
+      m.addImage(id, g.getImageData(0, 0, S, S), { pixelRatio: 2, stretchX: [[8, 24]], stretchY: [[8, 24]], content: [6, 6, 26, 26] });
+    };
+    const radar = this.styleId === 'radar';
+    mk('box', radar ? 'rgba(2,10,6,0.88)' : 'rgba(8,13,24,0.88)', radar ? 'rgba(90,200,140,0.45)' : 'rgba(120,145,190,0.45)');
+    mk('box-sel', 'rgba(40,6,30,0.92)', '#ff4fc3');
+    mk('box-mine', 'rgba(4,30,26,0.92)', '#2fd6b5');
+    for (const [k, col] of Object.entries(ATC_COLORS)) mk(`atc-${k}`, 'rgba(8,13,24,0.92)', col);
   }
 
   private install() {
@@ -149,6 +189,7 @@ export class MapController {
     // Skip the placeholder style and avoid double installs on the same style.
     if (!m.getStyle()?.glyphs || m.getLayer('aircraft')) return;
     addAircraftIcons(m);
+    this.addLabelBoxes();
     const dark = this.dark;
     const textColor = dark ? '#d6def0' : '#172033';
     const halo = dark ? 'rgba(3,6,12,0.92)' : 'rgba(255,255,255,0.95)';
@@ -183,8 +224,8 @@ export class MapController {
     m.addLayer({ id: 'chart-stand-labels', type: 'symbol', source: 'chart', minzoom: 15.5, filter: ['all', ['==', ['geometry-type'], 'Point'], ['in', ['get', 'kind'], ['literal', ['parking_position', 'gate']]], ['!=', ['get', 'label'], '']], layout: { 'text-field': ['get', 'label'], 'text-font': FONT_REG, 'text-size': 10, 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true }, paint: { 'text-color': dark ? '#b8fff2' : '#0f5132', 'text-halo-color': halo, 'text-halo-width': 1.2 } });
 
     src('atc-rings');
-    m.addLayer({ id: 'atc-ring-fill', type: 'fill', source: 'atc-rings', layout: { visibility: this.vis('atc') }, paint: { 'fill-color': ['get', 'color'], 'fill-opacity': ['case', ['get', 'sel'], 0.07, 0.04] } });
-    m.addLayer({ id: 'atc-ring-line', type: 'line', source: 'atc-rings', layout: { visibility: this.vis('atc') }, paint: { 'line-color': ['get', 'color'], 'line-opacity': ['case', ['get', 'sel'], 0.95, 0.45], 'line-width': ['case', ['get', 'sel'], 1.6, 0.8] } });
+    m.addLayer({ id: 'atc-ring-fill', type: 'fill', source: 'atc-rings', layout: { visibility: this.vis('atc') }, paint: { 'fill-color': ['get', 'color'], 'fill-opacity': ['case', ['get', 'sel'], 0.12, 0.07] } });
+    m.addLayer({ id: 'atc-ring-line', type: 'line', source: 'atc-rings', layout: { visibility: this.vis('atc') }, paint: { 'line-color': ['get', 'color'], 'line-opacity': ['case', ['get', 'sel'], 1, 0.75], 'line-width': ['case', ['get', 'sel'], 2.2, 1.3] } });
 
     src('runways', this.runways);
     m.addLayer({ id: 'runways', type: 'line', source: 'runways', minzoom: 9, layout: { 'line-cap': 'butt' }, paint: { 'line-color': dark ? '#4a5770' : '#64748b', 'line-width': ['interpolate', ['exponential', 2], ['zoom'], 9, 2, 14, 14] } });
@@ -195,8 +236,30 @@ export class MapController {
     m.addLayer({ id: 'airport-labels', type: 'symbol', source: 'airports', layout: { visibility: this.vis('airports'), 'text-field': ['get', 'icao'], 'text-font': FONT_REG, 'text-size': 10, 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true }, filter: ['any', ['all', ['>=', ['get', 'size'], 3], ['>=', ['zoom'], 5]], ['all', ['>=', ['get', 'size'], 2], ['>=', ['zoom'], 7.5]], ['>=', ['zoom'], 10]], paint: { 'text-color': dark ? '#7f8db0' : '#475569', 'text-halo-color': halo, 'text-halo-width': 1 } });
 
     src('atc');
-    m.addLayer({ id: 'atc', type: 'circle', source: 'atc', layout: { visibility: this.vis('atc') }, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 4, 8, 7], 'circle-color': dark ? '#0b1222' : '#ffffff', 'circle-stroke-color': ['get', 'color'], 'circle-stroke-width': ['case', ['get', 'sel'], 3, 2] } });
-    m.addLayer({ id: 'atc-labels', type: 'symbol', source: 'atc', minzoom: 3.2, layout: { visibility: this.vis('atc'), 'text-field': ['get', 'label'], 'text-font': FONT_BOLD, 'text-size': 10.5, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-optional': true, 'text-letter-spacing': 0.04 }, paint: { 'text-color': ['get', 'color'], 'text-halo-color': halo, 'text-halo-width': 1.3 } });
+    m.addLayer({ id: 'atc', type: 'circle', source: 'atc', layout: { visibility: this.vis('atc') }, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 5, 8, 9], 'circle-color': ['get', 'color'], 'circle-opacity': 0.25, 'circle-stroke-color': ['get', 'color'], 'circle-stroke-width': ['case', ['get', 'sel'], 3.5, 2.5] } });
+    // Station badge: ICAO + one coloured tag per online position (ATC-client style).
+    const tag = (i: number) => [' ', {}, ['coalesce', ['get', `p${i}`], ''], { 'text-color': ['coalesce', ['get', `c${i}`], '#ffffff'], 'font-scale': 0.9 }];
+    m.addLayer({
+      id: 'atc-labels',
+      type: 'symbol',
+      source: 'atc',
+      minzoom: 2.6,
+      layout: {
+        visibility: this.vis('atc'),
+        'text-field': ['format', ['get', 'name'], { 'text-color': '#ffffff' }, ...tag(0), ...tag(1), ...tag(2), ...tag(3), ...tag(4)] as unknown as ExpressionSpecification,
+        'text-font': FONT_BOLD,
+        'text-size': ['interpolate', ['linear'], ['zoom'], 3, 10.5, 8, 12.5],
+        'text-anchor': 'top',
+        'text-offset': [0, 1.2],
+        'icon-image': ['concat', 'atc-', ['get', 'pos']],
+        'icon-text-fit': 'both',
+        'icon-text-fit-padding': [3, 6, 3, 6],
+        'symbol-sort-key': ['case', ['get', 'sel'], 0, 1],
+        'text-allow-overlap': true,
+        'icon-allow-overlap': true,
+      },
+      paint: { 'text-color': '#ffffff' },
+    });
 
     src('plan');
     m.addLayer({ id: 'plan-casing', type: 'line', source: 'plan', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLORS.plan, 'line-width': 7, 'line-opacity': 0.18, 'line-blur': 2 } });
@@ -222,30 +285,39 @@ export class MapController {
       source: 'aircraft',
       layout: {
         'icon-image': this.styleId === 'radar' ? 'ac-radar' : ['match', ['get', 'wake'], 'L', 'ac-L', 'H', 'ac-H', 'J', 'ac-J', 'ac-M'],
-        'icon-size': ['interpolate', ['linear'], ['zoom'], 1.5, this.styleId === 'radar' ? 0.45 : 0.62, 6, this.styleId === 'radar' ? 0.65 : 0.92, 11, 1.2],
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 1.5, this.styleId === 'radar' ? 0.5 : 0.72, 6, this.styleId === 'radar' ? 0.72 : 1.05, 11, 1.4],
         'icon-rotate': ['get', 'hdg'],
         'icon-rotation-alignment': 'map',
         'icon-allow-overlap': true,
         'icon-ignore-placement': true,
         'symbol-sort-key': ['case', ['get', 'sel'], 2, ['get', 'mine'], 1, 0],
-        'text-field': this.labelExpr(this.styleId === 'radar' && this.prefs.labels === 'off' ? 'callsign' : this.prefs.labels),
-        'text-font': FONT_BOLD,
-        'text-size': this.styleId === 'radar' ? 10 : 10.5,
-        'text-anchor': 'left',
-        'text-offset': [1.3, 0],
-        'text-justify': 'left',
-        'text-line-height': 1.15,
-        'text-optional': true,
-        'text-padding': 1,
       },
       paint: {
         'icon-color': this.aircraftColor(),
-        'icon-halo-color': this.dark ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.9)',
-        'icon-halo-width': 1,
-        'text-color': ['case', ['get', 'sel'], '#ff9be0', ['get', 'mine'], '#7ff0da', this.styleId === 'radar' ? '#9df5c6' : textColor],
-        'text-halo-color': halo,
-        'text-halo-width': 1.4,
+        'icon-halo-color': this.dark ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.95)',
+        'icon-halo-width': 1.6,
       },
+    });
+    // Data blocks in their own layer: dark box behind each label, decluttered by collision.
+    m.addLayer({
+      id: 'aircraft-labels',
+      type: 'symbol',
+      source: 'aircraft',
+      layout: {
+        'text-field': this.labelExpr(this.prefs.labels),
+        'text-font': FONT_BOLD,
+        'text-size': this.styleId === 'radar' ? 11 : 11.5,
+        'text-anchor': 'top-left',
+        'text-offset': [1.15, 0.55],
+        'text-justify': 'left',
+        'text-line-height': 1.2,
+        'text-padding': 2,
+        'icon-image': ['case', ['get', 'sel'], 'box-sel', ['get', 'mine'], 'box-mine', 'box'],
+        'icon-text-fit': 'both',
+        'icon-text-fit-padding': [2, 5, 2, 5],
+        'symbol-sort-key': ['case', ['get', 'sel'], 0, ['get', 'mine'], 1, 2],
+      },
+      paint: { 'text-color': textColor },
     });
 
     m.addLayer({ id: 'airport-sel', type: 'circle', source: 'route', filter: ['==', ['get', 'kind'], 'airport'], paint: { 'circle-radius': 14, 'circle-color': 'rgba(125,180,255,0.12)', 'circle-stroke-color': '#7db4ff', 'circle-stroke-width': 1.6 } });
@@ -310,8 +382,10 @@ export class MapController {
       properties: {
         key: f.key,
         cs: f.callsign,
-        fl: f.onGround ? 'GND' : fmtAltShort(f.altitude),
-        gs: f.groundSpeed != null ? String(Math.round(f.groundSpeed)) : '',
+        fl: f.onGround ? 'GND' : f.altitude != null && f.altitude >= 18000 ? `FL${fmtAltShort(f.altitude)}` : f.altitude != null ? `A${fmtAltShort(f.altitude)}` : '',
+        gs: f.groundSpeed != null ? `${Math.round(f.groundSpeed)}kt` : '',
+        trend: f.verticalSpeed == null || Math.abs(f.verticalSpeed) < 300 ? 'level' : f.verticalSpeed > 0 ? 'up' : 'down',
+        info: [f.aircraft, f.arr ? `> ${f.arr}` : ''].filter(Boolean).join(' '),
         alt: f.onGround ? 0 : f.altitude ?? 0,
         hdg: f.heading ?? 0,
         wake: f.wake,
@@ -359,7 +433,11 @@ export class MapController {
       const top = list[0];
       const isSel = (sel?.kind === 'atc' && list.some((c) => c.key === sel.key)) || (sel?.kind === 'airport' && sel.icao === top.airport);
       const label = top.airport && list.length > 0 && top.locationSource === 'airport' ? `${top.airport} ${[...new Set(list.map((c) => c.position))].join('·')}` : top.callsign;
-      points.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [top.lon!, top.lat!] }, properties: { key: list.length === 1 ? top.key : '', airport: top.airport ?? '', label, color: ATC_COLORS[top.position], sel: isSel } });
+      const isAirport = !!top.airport && top.locationSource === 'airport';
+      const positions = [...new Set(list.map((c) => c.position))].slice(0, 5);
+      const props: Record<string, unknown> = { key: list.length === 1 ? top.key : '', airport: top.airport ?? '', label, name: isAirport ? top.airport : top.callsign, pos: top.position, color: ATC_COLORS[top.position], sel: isSel };
+      if (isAirport) positions.forEach((p, i) => { props[`p${i}`] = p === 'OTHER' ? 'ATC' : p; props[`c${i}`] = ATC_COLORS[p]; });
+      points.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [top.lon!, top.lat!] }, properties: props });
       for (const c of list) {
         const r = RING_NM[c.position];
         if (!r) continue;
@@ -509,7 +587,7 @@ export class MapController {
     }
     const m = this.map;
     if (!m.getLayer('aircraft')) return;
-    if (prev.labels !== p.labels) m.setLayoutProperty('aircraft', 'text-field', this.labelExpr(this.styleId === 'radar' && p.labels === 'off' ? 'callsign' : p.labels));
+    if (prev.labels !== p.labels) m.setLayoutProperty('aircraft-labels', 'text-field', this.labelExpr(p.labels));
     if (prev.colorBy !== p.colorBy) m.setPaintProperty('aircraft', 'icon-color', this.aircraftColor());
     for (const [key, layers] of [['airports', ['airports', 'airport-labels']], ['atc', ['atc', 'atc-labels', 'atc-ring-fill', 'atc-ring-line']]] as const) {
       for (const l of layers) if (m.getLayer(l)) m.setLayoutProperty(l, 'visibility', this.vis(key));

@@ -195,7 +195,7 @@ button:disabled {
   color: var(--dim);
 }
 .status {
-  margin-left: 150px;
+  margin-left: 230px;
   display: flex;
   align-items: center;
   gap: 6px;

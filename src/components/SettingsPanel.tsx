@@ -87,7 +87,7 @@ export function SettingsPanel() {
         className="link-btn"
         onClick={() => {
           try {
-            localStorage.removeItem('webeye2.prefs.v1');
+            localStorage.removeItem('webeye2.prefs.v2');
           } catch {
             /* ignore */
           }
