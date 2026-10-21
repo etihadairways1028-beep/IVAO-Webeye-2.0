@@ -5,7 +5,7 @@ import { fetchWhazzup, normalizeWhazzup, MIN_POLL_SECONDS } from './ivao';
 import { demoTraffic } from './demo';
 import type { Flight } from '../types';
 
-export type TrailPoint = [number, number, number]; // lon, lat, alt
+export type TrailPoint = [number, number, number, number?]; // lon, lat, alt, time (ms)
 /** Positions observed by this browser since the page was opened (not historical IVAO tracks). */
 export const trails = new Map<string, TrailPoint[]>();
 const MAX_TRAIL = 240; // ~1 h at 15 s polling for every aircraft
@@ -45,7 +45,7 @@ function persist(flights: Flight[]) {
   const keys = keepKeys(flights);
   for (const k of keys) {
     const t = trails.get(k);
-    if (t && t.length > 1) saved[k] = { t: Date.now(), p: t.map(([a, b, c]) => [Math.round(a * 1e4) / 1e4, Math.round(b * 1e4) / 1e4, Math.round(c)]) };
+    if (t && t.length > 1) saved[k] = { t: Date.now(), p: t.map(([a, b, c, d]) => [Math.round(a * 1e4) / 1e4, Math.round(b * 1e4) / 1e4, Math.round(c), d] as TrailPoint) };
   }
   if (Date.now() - lastSave < 20000 && !keys.size) return;
   lastSave = Date.now();
@@ -68,7 +68,7 @@ function recordTrails(flights: Flight[]) {
     }
     const last = t[t.length - 1];
     if (!last || Math.abs(last[0] - f.lon) > 1e-4 || Math.abs(last[1] - f.lat) > 1e-4) {
-      t.push([f.lon, f.lat, f.altitude ?? 0]);
+      t.push([f.lon, f.lat, f.altitude ?? 0, Date.now()]);
       if (keep.has(f.key)) {
         if (t.length > MAX_KEPT) t = [...t.slice(0, 1000).filter((_, i) => i % 2 === 0), ...t.slice(1000)];
       } else if (t.length > MAX_TRAIL) t.splice(0, t.length - MAX_TRAIL);

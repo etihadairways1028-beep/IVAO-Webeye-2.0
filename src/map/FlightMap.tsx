@@ -4,7 +4,7 @@ import { MapController } from './controller';
 import { useStore } from '../state/store';
 import { fetchRadarFrame } from '../data/weather';
 import { allAirports, getAirport } from '../data/airports';
-import { fetchSessionTrack } from '../data/ivao';
+import { fetchSessionTrack, type TrackPoint } from '../data/ivao';
 import { chartState, loadChart, onChartsChange } from '../data/charts';
 
 /** Zoomed in on an airport (any airport, ATC or not)? Load its ground chart automatically. */
@@ -89,16 +89,22 @@ export function FlightMap() {
     if (!f || f.demo || f.sessionId <= 0) return;
     let alive = true;
     const ctrl = new AbortController();
-    const load = () =>
-      fetchSessionTrack(f.sessionId, ctrl.signal)
-        .then((t) => {
+    let pts: TrackPoint[] = [];
+    // First the whole track, then only newer points every 2 minutes.
+    const load = () => {
+      const last = pts.length ? pts[pts.length - 1].t : null;
+      const since = last ? new Date(last).getTime() : undefined;
+      return fetchSessionTrack(f.sessionId, ctrl.signal, since)
+        .then(({ points, source }) => {
           if (!alive) return;
-          controller?.setTrack(t);
-          useStore.setState({ trackInfo: { key: selKey, points: t.length, error: null } });
+          pts = since && source === 'recorder' ? [...pts, ...points] : points;
+          controller?.setTrack(pts);
+          useStore.setState({ trackInfo: { key: selKey, points: pts.length, error: null, source } });
         })
-        .catch((e) => alive && useStore.setState({ trackInfo: { key: selKey, points: 0, error: e instanceof Error ? e.message : String(e) } }));
+        .catch((e) => alive && !pts.length && useStore.setState({ trackInfo: { key: selKey, points: 0, error: e instanceof Error ? e.message : String(e), source: null } }));
+    };
     load();
-    const id = window.setInterval(load, 60000);
+    const id = window.setInterval(load, 120000);
     return () => {
       alive = false;
       ctrl.abort();

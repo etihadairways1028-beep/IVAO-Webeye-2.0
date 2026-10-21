@@ -1,7 +1,7 @@
 import type { AtcPosition, Controller, Counts, Flight, RawAtc, RawLastTrack, RawPilot, RawWhazzup, WakeCat } from '../types';
 import { getAirport } from './airports';
 
-import { CORS_HINT, IVAO_BASE, WHAZZUP_URL } from './endpoints';
+import { CORS_HINT, IVAO_BASE, RECORDER_URL, WHAZZUP_URL } from './endpoints';
 export { WHAZZUP_URL };
 
 /** IVAO refreshes Whazzup every 15 s; polling faster only wastes their bandwidth. */
@@ -194,10 +194,27 @@ export interface TrackPoint {
  * Full position history of a pilot session (from connection, i.e. from the gate):
  * GET /v2/tracker/sessions/{sessionId}/tracks — part of IVAO's public tracker API.
  */
-export async function fetchSessionTrack(sessionId: number, signal?: AbortSignal): Promise<TrackPoint[]> {
+/**
+ * Full track of a session. Uses the WebEye recorder when one is configured (public, no key,
+ * one point per minute from pushback), otherwise IVAO's own tracks endpoint.
+ * `since` (ms) asks the recorder only for newer points.
+ */
+export async function fetchSessionTrack(sessionId: number, signal?: AbortSignal, since?: number): Promise<{ points: TrackPoint[]; source: 'recorder' | 'ivao' }> {
+  if (RECORDER_URL) {
+    try {
+      const res = await fetch(`${RECORDER_URL}/tracks/${sessionId}${since ? `?since=${since}` : ''}`, { signal, headers: { Accept: 'application/json' } });
+      if (res.ok) return { points: parseTrack(await res.json()), source: 'recorder' };
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') throw e;
+    }
+  }
   const res = await fetch(`${IVAO_BASE}/v2/tracker/sessions/${sessionId}/tracks`, { signal, headers: { Accept: 'application/json' } });
   if (!res.ok) throw new Error(`IVAO tracks HTTP ${res.status}`);
-  const arr = (await res.json()) as RawLastTrack[];
+  return { points: parseTrack(await res.json()), source: 'ivao' };
+}
+
+function parseTrack(raw: unknown): TrackPoint[] {
+  const arr = raw as RawLastTrack[];
   if (!Array.isArray(arr)) return [];
   return arr
     .filter((p) => typeof p.latitude === 'number' && typeof p.longitude === 'number')

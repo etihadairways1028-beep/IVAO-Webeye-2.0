@@ -480,6 +480,20 @@ export class MapController {
     this.set('aircraft', { type: 'FeatureCollection', features });
   }
 
+  /**
+   * Flown line for a flight: the recorder/IVAO track (one point a minute from pushback) up to
+   * where this browser started recording, then the browser's own 15-second positions.
+   */
+  private flownLine(f: Flight): [number, number][] {
+    const local = trails.get(f.key) ?? [];
+    const track = this.track && this.track.length > 1 ? this.track : null;
+    if (!track) return local.map((p) => [p[0], p[1]]);
+    const firstLocal = local.find((p) => p[3] != null)?.[3];
+    if (firstLocal == null) return track.map((p) => [p.lon, p.lat]);
+    const before = track.filter((p) => p.t && new Date(p.t).getTime() < firstLocal).map((p) => [p.lon, p.lat] as [number, number]);
+    return [...before, ...local.filter((p) => p[3] != null).map((p) => [p[0], p[1]] as [number, number])];
+  }
+
   private pushTails() {
     if (!this.map.getSource('tails')) return;
     const now = Date.now();
@@ -599,7 +613,7 @@ export class MapController {
         }
       }
       // Flown track: full IVAO session history (from the gate) when available, else what this browser observed.
-      const src = this.track && this.track.length > 1 ? this.track.map((p) => [p.lon, p.lat] as [number, number]) : (trails.get(f.key) ?? []).map((p) => [p[0], p[1]] as [number, number]);
+      const src = this.flownLine(f);
       if (src.length > 1 || (src.length === 1 && !f.onGround)) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: unwrap([...src, [lon, lat]]) }, properties: { kind: 'trail' } });
       // Before the recorded part: an estimated path from the departure airport, drawn dashed.
       const first = src[0] ?? [lon, lat];

@@ -92,7 +92,7 @@ interface State {
   toast: { text: string; id: number } | null;
   wxTime: number | null;
   wxError: string | null;
-  trackInfo: { key: string; points: number; error: string | null } | null;
+  trackInfo: { key: string; points: number; error: string | null; source: 'recorder' | 'ivao' | null } | null;
   taxi: { icao: string; text: string; route: TaxiRoute } | null;
   assignedSquawk: string;
 

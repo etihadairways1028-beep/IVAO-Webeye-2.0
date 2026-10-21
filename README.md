@@ -54,6 +54,7 @@ If a provider blocks cross-origin requests from the Pages site, deploy `proxy/cl
 
 - **ATC clearance tools** (My flight): type the squawk ATC gave you and WebEye checks it against your live transponder; type your taxi clearance (`34R via K B1 A`, `stand C3 via K A`, `from stand C3 …`) and the route is drawn on the ground chart with turn-by-turn steps, runway-crossing warnings and live "in 300 m turn right onto B1" guidance. IVAO doesn't publish controller instructions, so the pilot enters them. Without "via", a shortest route is suggested and labelled as a suggestion.
 - **Ground charts everywhere**: taxiways, stands and holding points load automatically for any airport you zoom into, with or without ATC online.
+- **Full tracks from pushback for everyone**: deploy the free track recorder in `recorder/` (one click, see recorder/README.md) and set `VITE_RECORDER_URL`; no API key needed.
 - **Trails**: short tails behind every aircraft; your own and the selected flight keep their full recorded trail in this browser (survives reloads; keeps recording in a background tab while tracking your VID), with a dashed estimate back to the departure airport when earlier history isn't available. If IVAO requires a key for full session tracks, set `IVAO_API_KEY` in Cloudflare Pages → Settings → Variables and secrets; the proxy adds it server-side.
 - **Liquid glass** panels (Settings → Appearance → Solid to turn off).
 

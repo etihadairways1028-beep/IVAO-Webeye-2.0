@@ -141,7 +141,7 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
           </div>
         )}
         <div className="legend-row">
-          <span className="lg lg-trail" /> {trackInfo && trackInfo.points > 1 ? 'Flown track from gate (IVAO)' : 'Flown (recorded by this browser)'}
+          <span className="lg lg-trail" /> {trackInfo && trackInfo.points > 1 ? (trackInfo.source === 'recorder' ? 'Flown track from pushback' : 'Flown track from gate (IVAO)') : 'Flown (recorded by this browser)'}
           {!(trackInfo && trackInfo.points > 1) && (
             <>
               <span className="lg lg-est" /> Estimated from departure
