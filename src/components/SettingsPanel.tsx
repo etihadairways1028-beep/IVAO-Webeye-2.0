@@ -47,9 +47,13 @@ export function SettingsPanel() {
         <>
           <div className="pop-label">Refresh interval</div>
           <Seg label="Refresh interval" value={prefs.pollSec} onChange={(pollSec) => setPrefs({ pollSec })} options={[{ value: 15, label: '15 s' }, { value: 30, label: '30 s' }, { value: 60, label: '60 s' }]} />
-          <p className="fineprint">Polling pauses while this tab is hidden and backs off after errors.</p>
+          <p className="fineprint">Polling pauses while this tab is hidden (unless you’re tracking your own VID) and backs off after errors.</p>
         </>
       )}
+
+      <div className="pop-label">Appearance</div>
+      <Seg label="Panel style" value={prefs.glass ? 'glass' : 'solid'} onChange={(v) => setPrefs({ glass: v === 'glass' })} options={[{ value: 'glass', label: 'Liquid glass' }, { value: 'solid', label: 'Solid' }]} />
+      <p className="fineprint">Liquid glass lets the map show through the panels. Choose Solid on slower computers.</p>
 
       <div className="pop-label">Transition altitude</div>
       <Seg

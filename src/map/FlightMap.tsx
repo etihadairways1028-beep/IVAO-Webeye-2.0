@@ -3,9 +3,24 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapController } from './controller';
 import { useStore } from '../state/store';
 import { fetchRadarFrame } from '../data/weather';
-import { getAirport } from '../data/airports';
+import { allAirports, getAirport } from '../data/airports';
 import { fetchSessionTrack } from '../data/ivao';
-import { loadChart, onChartsChange } from '../data/charts';
+import { chartState, loadChart, onChartsChange } from '../data/charts';
+
+/** Zoomed in on an airport (any airport, ATC or not)? Load its ground chart automatically. */
+let chartTimer = 0;
+function autoChart(b: [number, number, number, number], zoom: number) {
+  window.clearTimeout(chartTimer);
+  if (zoom < 11.2) return;
+  chartTimer = window.setTimeout(() => {
+    const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+    const k = Math.cos((cy * Math.PI) / 180);
+    const inView = allAirports().filter((a) => a.lon >= b[0] && a.lon <= b[2] && a.lat >= b[1] && a.lat <= b[3]);
+    inView.sort((a, z) => ((a.lon - cx) * k) ** 2 + (a.lat - cy) ** 2 - (((z.lon - cx) * k) ** 2 + (z.lat - cy) ** 2));
+    // Nearest airport first, plus a neighbour when two fields share the view; skip ones already tried.
+    for (const a of inView.slice(0, 2)) if (!chartState(a.icao)) loadChart(a.icao);
+  }, 700);
+}
 
 let controller: MapController | null = null;
 export const getMapController = () => controller;
@@ -26,7 +41,10 @@ export function FlightMap() {
         if (s?.kind === 'airport') store.setPanel('airports');
         if (s?.kind === 'atc') store.setPanel('atc');
       },
-      onView: (b) => useStore.setState({ viewBounds: b }),
+      onView: (b, zoom) => {
+        useStore.setState({ viewBounds: b });
+        autoChart(b, zoom);
+      },
       onStyleFallback: (msg) => useStore.getState().notify(msg),
       onUserMove: () => {
         if (useStore.getState().follow) useStore.getState().setFollow(false);
@@ -38,6 +56,7 @@ export function FlightMap() {
 
     const unsub = useStore.subscribe((s, p) => {
       if (s.controllers !== p.controllers) c.setControllers(s.controllers);
+      if (s.taxi !== p.taxi) c.setTaxi(s.taxi?.route ?? null);
       if (s.selection !== p.selection || s.showRoute !== p.showRoute) c.setSelection(s.selection, s.showRoute);
       if (s.follow !== p.follow) c.setFollow(s.follow);
       if (s.plan !== p.plan) c.setPlan(s.plan);

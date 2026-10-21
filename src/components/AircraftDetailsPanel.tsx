@@ -141,7 +141,13 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
           </div>
         )}
         <div className="legend-row">
-          <span className="lg lg-trail" /> {trackInfo && trackInfo.points > 1 ? 'Flown track from gate (IVAO)' : 'Flown track (since page opened)'} <span className="lg lg-rem" /> Remaining{planMatch ? '' : ' (great circle)'}
+          <span className="lg lg-trail" /> {trackInfo && trackInfo.points > 1 ? 'Flown track from gate (IVAO)' : 'Flown (recorded by this browser)'}
+          {!(trackInfo && trackInfo.points > 1) && (
+            <>
+              <span className="lg lg-est" /> Estimated from departure
+            </>
+          )}
+          <span className="lg lg-rem" /> Remaining{planMatch ? '' : ' (great circle)'}
           {planMatch ? (
             <>
               <span className="lg lg-plan" /> SimBrief plan
@@ -154,7 +160,7 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
         </div>
         <p className="fineprint">
           {planMatch ? 'Purple = your SimBrief route; distances and ETA follow it.' : 'The filed route is shown as text; plotted lines are a great-circle reference. Import this flight’s SimBrief OFP under My flight to draw the exact route.'}
-          {trackInfo?.error ? ` Full session track unavailable (${trackInfo.error}).` : ''}
+          {trackInfo?.error ? ` IVAO's full track for this flight isn't available here (${trackInfo.error}), so the solid line shows positions this browser has recorded, and the dashed part is an estimate from the departure airport. Your own and selected flights keep their trail when you reload.` : ''}
         </p>
       </Section>
 

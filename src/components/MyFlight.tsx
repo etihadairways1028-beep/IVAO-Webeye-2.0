@@ -5,6 +5,7 @@ import { selectFlight } from '../lib/actions';
 import { dash, fmtAlt, fmtDuration, fmtKt, fmtNm, fmtZulu, ago } from '../lib/format';
 import { Badge, KV, Panel, Section } from './ui';
 import { Navlog } from './Navlog';
+import { ClearanceTools } from './TaxiAssist';
 import { flightProgress } from '../lib/progress';
 import { IconFollow, IconImport, IconPlane, IconRoute, IconUser, IconX } from './Icons';
 
@@ -105,6 +106,8 @@ export function MyFlight() {
         )}
         <p className="fineprint">Your aircraft is highlighted in teal and labelled on every map style. Your VID is stored only in this browser.</p>
       </Section>
+
+      <ClearanceTools flight={mine ?? planFlight} planOrigin={plan?.origin.icao ?? null} />
 
       <Section title="SimBrief flight plan" icon={<IconImport size={15} />}>
         <form className="inline-form" onSubmit={importPlan}>

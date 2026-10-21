@@ -5,13 +5,14 @@ import { addAircraftIcons } from './icons';
 import { FONT_BOLD, FONT_REG, offlineStyle, styleFor, tintDark } from './styles';
 import { allAirports, getAirport } from '../data/airports';
 import { trails } from '../data/feed';
-import { circle, destination, greatCircle, unwrap } from '../lib/geo';
+import { circle, destination, distanceNm, greatCircle, unwrap } from '../lib/geo';
 import { fmtAltShort } from '../lib/format';
 import type { RadarFrame } from '../data/weather';
 import type { TrackPoint } from '../data/ivao';
 import { planPoints, progressAlong } from '../data/simbrief';
 import { allCharts } from '../data/charts';
 import { firForCallsign, firShapes, loadFirs } from '../data/firs';
+import type { TaxiRoute } from '../lib/taxi';
 
 type FC = GeoJSON.FeatureCollection;
 const EMPTY: FC = { type: 'FeatureCollection', features: [] };
@@ -50,6 +51,7 @@ export class MapController {
   private hoverKey: string | null = null;
   private styleTimer = 0;
   private track: TrackPoint[] | null = null;
+  private taxi: TaxiRoute | null = null;
   private hoverFrame = 0;
   private destroyed = false;
   private cb: MapCallbacks;
@@ -168,6 +170,17 @@ export class MapController {
     return e as ExpressionSpecification;
   }
 
+  /** Box behind the data block, only where there is text (no empty boxes when zoomed out). */
+  private boxExpr(mode: LabelMode): ExpressionSpecification {
+    const box = ['case', ['get', 'sel'], 'box-sel', ['get', 'mine'], 'box-mine', 'box'];
+    const pick = (normal: unknown) => ['case', ['any', ['get', 'sel'], ['get', 'mine']], box, normal];
+    let e: unknown;
+    if (mode === 'off') e = pick('');
+    else if (mode === 'callsign' || mode === 'full') e = box;
+    else e = ['step', ['zoom'], pick(''), 4, box];
+    return e as ExpressionSpecification;
+  }
+
   private addLabelBoxes() {
     const m = this.map;
     const mk = (id: string, fill: string, stroke: string) => {
@@ -276,6 +289,14 @@ export class MapController {
       paint: { 'text-color': '#ffffff' },
     });
 
+    // Taxi route from the pilot's clearance: bright green with a dark casing, turn labels and a hold bar.
+    src('taxi');
+    m.addLayer({ id: 'taxi-casing', type: 'line', source: 'taxi', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#04140b', 'line-width': ['interpolate', ['exponential', 2], ['zoom'], 12, 5, 16, 14, 18, 28], 'line-opacity': 0.75 } });
+    m.addLayer({ id: 'taxi-line', type: 'line', source: 'taxi', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#39e58c', 'line-width': ['interpolate', ['exponential', 2], ['zoom'], 12, 2.5, 16, 7, 18, 16] } });
+    m.addLayer({ id: 'taxi-arrows', type: 'symbol', source: 'taxi', filter: ['==', ['geometry-type'], 'LineString'], minzoom: 13.5, layout: { 'symbol-placement': 'line', 'symbol-spacing': 90, 'text-field': '>', 'text-font': FONT_BOLD, 'text-size': 14, 'text-keep-upright': false, 'text-rotation-alignment': 'map' }, paint: { 'text-color': '#04140b' } });
+    m.addLayer({ id: 'taxi-points', type: 'circle', source: 'taxi', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': ['case', ['==', ['get', 'end'], true], 7, 4.5], 'circle-color': ['case', ['==', ['get', 'end'], true], '#ff4d4d', '#39e58c'], 'circle-stroke-color': '#04140b', 'circle-stroke-width': 2 } });
+    m.addLayer({ id: 'taxi-labels', type: 'symbol', source: 'taxi', filter: ['==', ['geometry-type'], 'Point'], layout: { 'text-field': ['get', 'label'], 'text-font': FONT_BOLD, 'text-size': 12, 'text-anchor': 'bottom', 'text-offset': [0, -0.9], 'text-allow-overlap': true, 'icon-image': 'box-mine', 'icon-text-fit': 'both', 'icon-text-fit-padding': [2, 5, 2, 5] }, paint: { 'text-color': '#c9ffe0' } });
+
     src('plan');
     m.addLayer({ id: 'plan-casing', type: 'line', source: 'plan', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLORS.plan, 'line-width': 7, 'line-opacity': 0.18, 'line-blur': 2 } });
     m.addLayer({ id: 'plan-line', type: 'line', source: 'plan', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLORS.plan, 'line-width': 2.6, 'line-opacity': 0.95 } });
@@ -283,11 +304,16 @@ export class MapController {
     m.addLayer({ id: 'plan-fix-labels', type: 'symbol', source: 'plan', filter: ['==', ['geometry-type'], 'Point'], minzoom: 4.5, layout: { 'text-field': ['get', 'ident'], 'text-font': FONT_BOLD, 'text-size': 10, 'text-offset': [0.8, 0], 'text-anchor': 'left', 'text-optional': true }, paint: { 'text-color': ['case', ['get', 'passed'], '#8b7fb0', '#ddd6fe'], 'text-halo-color': halo, 'text-halo-width': 1.3 } });
 
     src('route');
+    m.addLayer({ id: 'route-est', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'est'], layout: { 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLORS.flown, 'line-opacity': 0.5, 'line-width': 2, 'line-dasharray': [2, 2] } });
     m.addLayer({ id: 'route-ref', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'ref'], paint: { 'line-color': dark ? '#ffffff' : '#0f172a', 'line-opacity': 0.22, 'line-width': 1.2, 'line-dasharray': [2, 3] } });
     m.addLayer({ id: 'route-remaining', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'remaining'], layout: { 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLORS.remaining, 'line-opacity': 0.95, 'line-width': 1.6, 'line-dasharray': [1, 2.5] } });
     m.addLayer({ id: 'route-trail', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'trail'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLORS.flown, 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 2.4, 14, 3.5], 'line-opacity': 0.95 } });
     m.addLayer({ id: 'route-ends', type: 'circle', source: 'route', filter: ['==', ['get', 'kind'], 'end'], paint: { 'circle-radius': 5, 'circle-color': dark ? '#0b1222' : '#fff', 'circle-stroke-color': ROUTE_COLORS.flown, 'circle-stroke-width': 2 } });
     m.addLayer({ id: 'route-end-labels', type: 'symbol', source: 'route', filter: ['==', ['get', 'kind'], 'end'], layout: { 'text-field': ['get', 'icao'], 'text-font': FONT_BOLD, 'text-size': 11.5, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-allow-overlap': true }, paint: { 'text-color': '#ffb3e6', 'text-halo-color': halo, 'text-halo-width': 1.5 } });
+
+    // Short fading tails behind every aircraft: shows where each one has just been.
+    src('tails');
+    m.addLayer({ id: 'tails', type: 'line', source: 'tails', minzoom: 3.5, layout: { visibility: this.styleId !== 'radar' && this.prefs.layers.trails ? 'visible' : 'none', 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['case', ['get', 'mine'], '#2fd6b5', dark ? '#8fb3ea' : '#475569'], 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1, 9, 2], 'line-opacity': 0.5 } });
 
     src('history');
     m.addLayer({ id: 'history', type: 'circle', source: 'history', layout: { visibility: this.styleId === 'radar' && this.prefs.layers.trails ? 'visible' : 'none' }, paint: { 'circle-radius': 1.4, 'circle-color': '#7cf2b4', 'circle-opacity': ['get', 'o'] } });
@@ -327,7 +353,7 @@ export class MapController {
         'text-justify': 'left',
         'text-line-height': 1.2,
         'text-padding': 2,
-        'icon-image': ['case', ['get', 'sel'], 'box-sel', ['get', 'mine'], 'box-mine', 'box'],
+        'icon-image': this.boxExpr(this.prefs.labels),
         'icon-text-fit': 'both',
         'icon-text-fit-padding': [2, 5, 2, 5],
         'symbol-sort-key': ['case', ['get', 'sel'], 0, ['get', 'mine'], 1, 2],
@@ -343,6 +369,29 @@ export class MapController {
     this.pushRoute();
     this.pushPlan();
     this.pushAircraft();
+    this.pushTails();
+    this.pushTaxi();
+  }
+
+  private pushTaxi() {
+    if (!this.map.getSource('taxi')) return;
+    const r = this.taxi;
+    if (!r) return this.set('taxi', EMPTY);
+    const features: GeoJSON.Feature[] = [{ type: 'Feature', geometry: { type: 'LineString', coordinates: r.path }, properties: {} }];
+    for (const st of r.steps) {
+      if (st.turn === 'start' || st.turn === 'straight') {
+        if (st.turn === 'start' && st.name) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: r.path[Math.min(st.startIdx + 1, r.path.length - 1)] }, properties: { label: st.name, end: false } });
+        continue;
+      }
+      const label = st.turn === 'end' ? (r.destLabel.startsWith('runway') ? `HOLD ${r.destLabel.slice(7)}` : r.destLabel.toUpperCase()) : st.turn === 'cross' ? 'CROSS: WAIT FOR CLEARANCE' : `${st.turn === 'left' ? '◄' : '►'} ${st.name}`;
+      features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: r.path[st.startIdx] }, properties: { label: label.replace(/[◄►] /, (m) => (m.startsWith('◄') ? 'LEFT ' : 'RIGHT ')), end: st.turn === 'end' } });
+    }
+    this.set('taxi', { type: 'FeatureCollection', features });
+  }
+
+  setTaxi(r: TaxiRoute | null) {
+    this.taxi = r;
+    this.pushTaxi();
   }
 
   /** Flat chart or 3D globe. The globe gets a thin blue atmosphere at low zoom, like the trailer. */
@@ -429,6 +478,23 @@ export class MapController {
       },
     }));
     this.set('aircraft', { type: 'FeatureCollection', features });
+  }
+
+  private pushTails() {
+    if (!this.map.getSource('tails')) return;
+    const now = Date.now();
+    const features: GeoJSON.Feature[] = [];
+    if (this.prefs.layers.trails && this.styleId !== 'radar') {
+      for (const f of this.flights) {
+        if (f.onGround) continue;
+        const t = trails.get(f.key);
+        if (!t || t.length < 2) continue;
+        const pts = t.slice(-8).map((p) => [p[0], p[1]] as [number, number]);
+        pts.push(this.pos(f, now));
+        features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: unwrap(pts) }, properties: { mine: this.myVid != null && f.vid === this.myVid } });
+      }
+    }
+    this.set('tails', { type: 'FeatureCollection', features });
   }
 
   private pushHistory() {
@@ -534,8 +600,29 @@ export class MapController {
       }
       // Flown track: full IVAO session history (from the gate) when available, else what this browser observed.
       const src = this.track && this.track.length > 1 ? this.track.map((p) => [p.lon, p.lat] as [number, number]) : (trails.get(f.key) ?? []).map((p) => [p[0], p[1]] as [number, number]);
-      if (src.length > 1) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: unwrap([...src, [lon, lat]]) }, properties: { kind: 'trail' } });
+      if (src.length > 1 || (src.length === 1 && !f.onGround)) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: unwrap([...src, [lon, lat]]) }, properties: { kind: 'trail' } });
+      // Before the recorded part: an estimated path from the departure airport, drawn dashed.
+      const first = src[0] ?? [lon, lat];
+      const fullTrack = this.track && this.track.length > 1;
+      if (!fullTrack && dep && !(f.onGround && (f.departureDistance ?? 99) < 5)) {
+        const gapNm = distanceNm(dep.lat, dep.lon, first[1], first[0]);
+        if (gapNm > 3) {
+          let est: [number, number][];
+          if (plan) {
+            const pts = planPoints(plan);
+            const { legIndex } = progressAlong(plan, first[1], first[0]);
+            est = [...pts.slice(0, legIndex + 1).map((p) => [p.lon, p.lat] as [number, number]), first];
+          } else est = greatCircle(dep.lat, dep.lon, first[1], first[0], 48);
+          features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: unwrap(est) }, properties: { kind: 'est' } });
+        }
+      }
       for (const a of [dep, arr]) if (a) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [a.lon, a.lat] }, properties: { kind: 'end', icao: a.icao } });
+    }
+    // Your own flight always shows its whole recorded trail, selected or not.
+    const mine = this.myVid != null ? this.flights.find((x) => x.vid === this.myVid) : undefined;
+    if (mine && mine !== f) {
+      const t = (trails.get(mine.key) ?? []).map((p) => [p[0], p[1]] as [number, number]);
+      if (t.length > 1) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: unwrap([...t, this.pos(mine, Date.now())]) }, properties: { kind: 'trail' } });
     }
     const s = this.selection;
     if (s?.kind === 'airport') {
@@ -573,6 +660,7 @@ export class MapController {
     this.pushRoute();
     if (fresh) {
       this.pushHistory();
+      this.pushTails();
       if (this.plan) this.pushPlan();
     }
   }
@@ -645,12 +733,18 @@ export class MapController {
     const m = this.map;
     if (!m.getLayer('aircraft')) return;
     if (prev.globe !== p.globe) this.applyProjection();
-    if (prev.labels !== p.labels) m.setLayoutProperty('aircraft-labels', 'text-field', this.labelExpr(p.labels));
+    if (prev.glass !== p.glass) requestAnimationFrame(() => m.resize());
+    if (prev.labels !== p.labels) {
+      m.setLayoutProperty('aircraft-labels', 'text-field', this.labelExpr(p.labels));
+      m.setLayoutProperty('aircraft-labels', 'icon-image', this.boxExpr(p.labels));
+    }
     if (prev.colorBy !== p.colorBy) m.setPaintProperty('aircraft', 'icon-color', this.aircraftColor());
     for (const [key, layers] of [['airports', ['airports', 'airport-labels']], ['atc', ['atc', 'atc-labels', 'atc-ring-fill', 'atc-ring-line', 'fir-active-fill', 'fir-active-line']], ['firs', ['fir-lines']]] as const) {
       for (const l of layers) if (m.getLayer(l)) m.setLayoutProperty(l, 'visibility', this.vis(key));
     }
     if (m.getLayer('history')) m.setLayoutProperty('history', 'visibility', this.styleId === 'radar' && p.layers.trails ? 'visible' : 'none');
+    if (m.getLayer('tails')) m.setLayoutProperty('tails', 'visibility', this.styleId !== 'radar' && p.layers.trails ? 'visible' : 'none');
+    if (prev.layers.trails !== p.layers.trails) this.pushTails();
     if (prev.layers.weather !== p.layers.weather) {
       if (p.layers.weather) this.addWeather();
       else this.removeWeather();
@@ -674,11 +768,15 @@ export class MapController {
   /** Keep the subject clear of floating panels. */
   padding(extra = 0) {
     const w = window.innerWidth;
-    if (w < 760) return { top: 20 + extra, bottom: Math.round(window.innerHeight * 0.45) + extra, left: 20 + extra, right: 20 + extra };
+    // In glass mode the map runs underneath the top bar and side rail.
+    const under = document.documentElement.dataset.glass === '1';
+    const t0 = under ? (w < 760 ? 52 : 48) : 0;
+    const l0 = under && w >= 760 ? 76 : 0;
+    if (w < 760) return { top: 20 + t0 + extra, bottom: Math.round(window.innerHeight * 0.45) + extra, left: 20 + extra, right: 20 + extra };
     // The map element starts right of the sidebar and below the top bar; panels dock on top of it.
     const st = document.documentElement.dataset;
     const panel = w < 1180 ? 340 : 384;
-    return { top: 30 + extra, bottom: (st.rightPanel === '1' ? 70 : 30) + extra, left: (st.leftPanel === '1' ? panel + 20 : 30) + extra, right: (st.rightPanel === '1' ? panel + 60 : 60) + extra };
+    return { top: 30 + t0 + extra, bottom: (st.rightPanel === '1' ? 70 : 30) + extra, left: (st.leftPanel === '1' ? panel + 20 : 30) + l0 + extra, right: (st.rightPanel === '1' ? panel + 60 : 60) + extra };
   }
 
   // ───────── loop & events
@@ -695,6 +793,7 @@ export class MapController {
         this.map.easeTo({ center: to, duration: zoom >= 9 ? 480 : 980, easing: (t) => t, padding: this.padding() });
       }
       this.pushAircraft();
+      if (zoom >= 3.5) this.pushTails(); // keep tails attached to the moving aircraft
       if (f && !f.onGround) this.pushRoute();
     }
     const fast = this.follow || zoom >= 9;

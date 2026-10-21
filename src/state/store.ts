@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Controller, Counts, FeedStatus, Flight, SimbriefPlan, WakeCat } from '../types';
 import { REGIONS, inBox, type Region } from '../lib/geo';
+import type { TaxiRoute } from '../lib/taxi';
 
 export type MapStyleId = 'dark' | 'standard' | 'satellite' | 'radar';
 export type LabelMode = 'auto' | 'off' | 'callsign' | 'full';
@@ -20,6 +21,7 @@ export interface Prefs {
   lastNonRadarStyle: Exclude<MapStyleId, 'radar'>;
   labels: LabelMode;
   globe: boolean;
+  glass: boolean;
   colorBy: 'uniform' | 'altitude';
   layers: { airports: boolean; atc: boolean; weather: boolean; trails: boolean; borders: boolean; firs: boolean };
   pollSec: 15 | 30 | 60;
@@ -37,6 +39,7 @@ const DEFAULT_PREFS: Prefs = {
   lastNonRadarStyle: 'dark',
   labels: 'auto',
   globe: false,
+  glass: true,
   colorBy: 'uniform',
   layers: { airports: true, atc: true, weather: false, trails: true, borders: true, firs: true },
   pollSec: 15,
@@ -90,6 +93,8 @@ interface State {
   wxTime: number | null;
   wxError: string | null;
   trackInfo: { key: string; points: number; error: string | null } | null;
+  taxi: { icao: string; text: string; route: TaxiRoute } | null;
+  assignedSquawk: string;
 
   setPrefs: (p: Partial<Prefs>) => void;
   setFilters: (f: Partial<Filters>) => void;
@@ -129,6 +134,8 @@ export const useStore = create<State>((set, get) => ({
   wxTime: null,
   wxError: null,
   trackInfo: null,
+  taxi: null,
+  assignedSquawk: '',
 
   setPrefs: (p) => {
     const prefs = { ...get().prefs, ...p };

@@ -191,6 +191,10 @@ export default function App() {
 
   const leftOpen = panel != null;
   const rightOpen = !!(selFlight || selAtc);
+  const glass = useStore((s) => s.prefs.glass);
+  useEffect(() => {
+    document.documentElement.dataset.glass = glass ? '1' : '0';
+  }, [glass]);
   useEffect(() => {
     document.documentElement.dataset.leftPanel = leftOpen ? '1' : '0';
     document.documentElement.dataset.rightPanel = rightOpen ? '1' : '0';
