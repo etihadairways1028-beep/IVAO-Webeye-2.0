@@ -7,12 +7,12 @@ export const APP_VERSION = '2.1';
 export function About() {
   const setOverlay = useStore((s) => s.setOverlay);
   return (
-    <div className="popover glass center about" role="dialog" aria-label="About WebEye">
+    <div className="popover glass center about" role="dialog" aria-label="About IVAO WebEye">
       <div className="popover-head">
         <div className="about-brand">
           <IconLogo size={30} />
           <div>
-            <h2>WebEye {APP_VERSION}</h2>
+            <h2>IVAO WebEye {APP_VERSION}</h2>
             <div className="dim small">Live traffic viewer for the IVAO network</div>
           </div>
         </div>
@@ -21,12 +21,12 @@ export function About() {
         </button>
       </div>
       <p className="about-text">
-        WebEye shows pilots and air traffic controllers connected to the International Virtual Aviation Organisation in real time, with flight
+        IVAO WebEye shows pilots and air traffic controllers connected to the International Virtual Aviation Organisation in real time, with flight
         details, SimBrief flight plans, airport information and ground charts.
       </p>
       <div className="notice" role="note">
-        <strong>Independent community project.</strong> WebEye 2.x is a concept built by IVAO members. It is not an official IVAO service and is not
-        endorsed by IVAO. “IVAO” is a trademark of its owner. For simulation use only; never use it for real-world navigation.
+        <strong>Independent community project.</strong> IVAO WebEye 2.x is a concept built by members of the IVAO community. It is not an official IVAO release
+        and is not endorsed by IVAO unless IVAO states otherwise. “IVAO” is a trademark of its owner. For simulation use only; never use it for real-world navigation.
       </div>
       <div className="pop-label">Data sources</div>
       <table className="about-table">

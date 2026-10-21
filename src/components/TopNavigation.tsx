@@ -74,9 +74,9 @@ export function TopNavigation({ visibleCount }: { visibleCount: number }) {
       </div>
       <div className="brand-text">
           <span className="brand-name">
-            WebEye<span className="brand-ver">2.1</span>
+            IVAO WebEye<span className="brand-ver">2.1</span>
           </span>
-          <span className="brand-sub">IVAO live traffic · community edition</span>
+          <span className="brand-sub">Live network traffic · community edition</span>
       </div>
       <StatusPill />
       <div className="stats" aria-label="Network statistics">
@@ -103,7 +103,7 @@ export function TopNavigation({ visibleCount }: { visibleCount: number }) {
         <button className={`icon-btn ${overlay === 'layers' ? 'on' : ''}`} aria-label="Map layers" title="Map layers (M)" aria-expanded={overlay === 'layers'} onClick={() => setOverlay(overlay === 'layers' ? null : 'layers')}>
           <IconLayers />
         </button>
-        <button className={`icon-btn ${overlay === 'about' ? 'on' : ''}`} aria-label="About WebEye" title="About" aria-expanded={overlay === 'about'} onClick={() => setOverlay(overlay === 'about' ? null : 'about')}>
+        <button className={`icon-btn ${overlay === 'about' ? 'on' : ''}`} aria-label="About IVAO WebEye" title="About" aria-expanded={overlay === 'about'} onClick={() => setOverlay(overlay === 'about' ? null : 'about')}>
           <IconInfo />
         </button>
         <button className={`icon-btn ${overlay === 'settings' ? 'on' : ''}`} aria-label="Settings" title="Settings" aria-expanded={overlay === 'settings'} onClick={() => setOverlay(overlay === 'settings' ? null : 'settings')}>

@@ -215,7 +215,7 @@ export default function App() {
       {!airportsReady && (
         <div className="splash" role="status" aria-live="polite">
           <IconLogo size={44} />
-          <div className="splash-name">WebEye</div>
+          <div className="splash-name">IVAO WebEye</div>
           <div className="splash-bar"><span /></div>
           <div className="dim small">Loading airport database…</div>
         </div>
