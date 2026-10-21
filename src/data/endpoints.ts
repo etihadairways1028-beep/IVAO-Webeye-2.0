@@ -21,7 +21,7 @@ export const SIMBRIEF_URL = pick('/proxy/simbrief/api/xml.fetcher.php', 'https:/
 export const AWC_URL = pick('/proxy/awc/api/data', 'https://aviationweather.gov/api/data', env.VITE_AWC_URL);
 export const RAINVIEWER_URL = pick('/proxy/rainviewer/public/weather-maps.json', 'https://api.rainviewer.com/public/weather-maps.json', env.VITE_RAINVIEWER_URL);
 /** Optional WebEye track recorder (see recorder/README.md): full tracks from pushback for every flight. */
-export const RECORDER_URL = (env.VITE_RECORDER_URL ?? '').replace(/\/+$/, '');
+export const RECORDER_URL = (env.VITE_RECORDER_URL || 'https://webeye-recorder.etihadairways1028.workers.dev').replace(/\/+$/, '');
 export const OVERPASS_URL = pick('/proxy/overpass/api/interpreter', 'https://overpass-api.de/api/interpreter', env.VITE_OVERPASS_URL);
 
 /** Human-readable hint appended to network errors in static deployments. */
