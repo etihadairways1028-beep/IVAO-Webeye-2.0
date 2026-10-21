@@ -11,6 +11,7 @@ import type { RadarFrame } from '../data/weather';
 import type { TrackPoint } from '../data/ivao';
 import { planPoints, progressAlong } from '../data/simbrief';
 import { allCharts } from '../data/charts';
+import { firForCallsign, firShapes, loadFirs } from '../data/firs';
 
 type FC = GeoJSON.FeatureCollection;
 const EMPTY: FC = { type: 'FeatureCollection', features: [] };
@@ -83,6 +84,13 @@ export class MapController {
     this.bindEvents();
     this.tick = this.tick.bind(this);
     this.tickHandle = window.setTimeout(this.tick, 1000);
+    loadFirs()
+      .then(() => {
+        if (this.destroyed) return;
+        this.set('firs', firShapes() ?? EMPTY);
+        this.pushAtc();
+      })
+      .catch(() => undefined); // boundaries are optional; stations still show as badges
   }
 
   destroy() {
@@ -222,6 +230,13 @@ export class MapController {
     m.addLayer({ id: 'chart-rwy-labels', type: 'symbol', source: 'chart', minzoom: 12.5, filter: ['all', ['==', ['geometry-type'], 'LineString'], ['==', ['get', 'kind'], 'runway'], ['!=', ['get', 'label'], '']], layout: { 'symbol-placement': 'line-center', 'text-field': ['get', 'label'], 'text-font': FONT_BOLD, 'text-size': 12, 'text-keep-upright': true }, paint: { 'text-color': '#ffffff', 'text-halo-color': '#111827', 'text-halo-width': 2 } });
     m.addLayer({ id: 'chart-stands', type: 'circle', source: 'chart', minzoom: 14.5, filter: ['all', ['==', ['geometry-type'], 'Point'], ['in', ['get', 'kind'], ['literal', ['parking_position', 'gate']]]], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 14.5, 2, 18, 5], 'circle-color': ['match', ['get', 'kind'], 'gate', '#7db4ff', '#3ff0d0'], 'circle-opacity': 0.9 } });
     m.addLayer({ id: 'chart-stand-labels', type: 'symbol', source: 'chart', minzoom: 15.5, filter: ['all', ['==', ['geometry-type'], 'Point'], ['in', ['get', 'kind'], ['literal', ['parking_position', 'gate']]], ['!=', ['get', 'label'], '']], layout: { 'text-field': ['get', 'label'], 'text-font': FONT_REG, 'text-size': 10, 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true }, paint: { 'text-color': dark ? '#b8fff2' : '#0f5132', 'text-halo-color': halo, 'text-halo-width': 1.2 } });
+
+    // FIR boundaries: faint chart lines everywhere, filled in amber where a centre is online.
+    src('firs', firShapes() ?? EMPTY);
+    const firLine = this.styleId === 'radar' ? '#1f5a3c' : this.styleId === 'satellite' ? 'rgba(255,255,255,0.28)' : dark ? '#34507e' : '#9aa8bf';
+    m.addLayer({ id: 'fir-lines', type: 'line', source: 'firs', layout: { visibility: this.vis('firs') }, paint: { 'line-color': firLine, 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 0.5, 7, 1.1], 'line-opacity': 0.75 } });
+    m.addLayer({ id: 'fir-active-fill', type: 'fill', source: 'firs', filter: ['in', ['get', 'id'], ['literal', []]], layout: { visibility: this.vis('atc') }, paint: { 'fill-color': ATC_COLORS.CTR, 'fill-opacity': 0.07 } });
+    m.addLayer({ id: 'fir-active-line', type: 'line', source: 'firs', filter: ['in', ['get', 'id'], ['literal', []]], layout: { visibility: this.vis('atc'), 'line-join': 'round' }, paint: { 'line-color': ATC_COLORS.CTR, 'line-width': 1.6, 'line-opacity': 0.85 } });
 
     src('atc-rings');
     m.addLayer({ id: 'atc-ring-fill', type: 'fill', source: 'atc-rings', layout: { visibility: this.vis('atc') }, paint: { 'fill-color': ['get', 'color'], 'fill-opacity': ['case', ['get', 'sel'], 0.12, 0.07] } });
@@ -419,7 +434,30 @@ export class MapController {
   private pushAtc() {
     if (!this.map.getSource('atc')) return;
     const groups = new Map<string, Controller[]>();
+    const active = new Set<string>();
+    const activeSel = new Set<string>();
+    const firPos = new Map<string, [number, number]>();
+    const sel0 = this.selection;
     for (const c of this.controllers) {
+      if (c.position !== 'CTR' && c.position !== 'FSS') continue;
+      const fir = firForCallsign(c.callsign);
+      if (!fir) continue;
+      for (const b of fir.b) {
+        active.add(b);
+        if (sel0?.kind === 'atc' && sel0.key === c.key) activeSel.add(b);
+      }
+      if (fir.label) firPos.set(c.key, fir.label);
+    }
+    const inSet = (ids: Set<string>) => ['in', ['get', 'id'], ['literal', [...ids]]] as unknown as maplibregl.FilterSpecification;
+    if (this.map.getLayer('fir-active-fill')) {
+      this.map.setFilter('fir-active-fill', inSet(active));
+      this.map.setFilter('fir-active-line', inSet(active));
+      this.map.setPaintProperty('fir-active-fill', 'fill-opacity', ['case', ['in', ['get', 'id'], ['literal', [...activeSel]]], 0.16, 0.07]);
+      this.map.setPaintProperty('fir-active-line', 'line-width', ['case', ['in', ['get', 'id'], ['literal', [...activeSel]]], 2.6, 1.6]);
+    }
+    for (const c0 of this.controllers) {
+      const fp = firPos.get(c0.key);
+      const c = fp ? { ...c0, lon: fp[0], lat: fp[1] } : c0;
       if (c.lat == null || c.lon == null) continue;
       const k = c.airport && c.locationSource === 'airport' ? c.airport : c.key;
       (groups.get(k) ?? groups.set(k, []).get(k)!).push(c);
@@ -589,7 +627,7 @@ export class MapController {
     if (!m.getLayer('aircraft')) return;
     if (prev.labels !== p.labels) m.setLayoutProperty('aircraft-labels', 'text-field', this.labelExpr(p.labels));
     if (prev.colorBy !== p.colorBy) m.setPaintProperty('aircraft', 'icon-color', this.aircraftColor());
-    for (const [key, layers] of [['airports', ['airports', 'airport-labels']], ['atc', ['atc', 'atc-labels', 'atc-ring-fill', 'atc-ring-line']]] as const) {
+    for (const [key, layers] of [['airports', ['airports', 'airport-labels']], ['atc', ['atc', 'atc-labels', 'atc-ring-fill', 'atc-ring-line', 'fir-active-fill', 'fir-active-line']], ['firs', ['fir-lines']]] as const) {
       for (const l of layers) if (m.getLayer(l)) m.setLayoutProperty(l, 'visibility', this.vis(key));
     }
     if (m.getLayer('history')) m.setLayoutProperty('history', 'visibility', this.styleId === 'radar' && p.layers.trails ? 'visible' : 'none');

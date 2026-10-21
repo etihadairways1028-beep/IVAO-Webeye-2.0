@@ -1,6 +1,7 @@
 import { useStore } from '../state/store';
 import type { Controller, Flight } from '../types';
 import { getAirport } from '../data/airports';
+import { firBounds, firForCallsign } from '../data/firs';
 
 /** Select a flight and frame it (with its departure/arrival when known). */
 export function selectFlight(f: Flight, opts: { frame?: 'route' | 'aircraft'; follow?: boolean } = {}) {
@@ -24,6 +25,9 @@ export function selectFlight(f: Flight, opts: { frame?: 'route' | 'aircraft'; fo
 export function selectController(c: Controller) {
   const s = useStore.getState();
   s.select({ kind: 'atc', key: c.key });
+  const fir = firForCallsign(c.callsign);
+  const box = fir && firBounds(fir.b);
+  if (box) return s.camera_({ type: 'fit', bounds: box, maxZoom: 7 });
   if (c.lat != null && c.lon != null) s.camera_({ type: 'fly', center: [c.lon, c.lat], zoom: c.position === 'APP' || c.position === 'DEP' ? 7.5 : 9.5 });
 }
 

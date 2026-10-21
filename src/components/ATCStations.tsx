@@ -1,10 +1,12 @@
+import { firForCallsign } from '../data/firs';
+import { shareSelection } from '../lib/share';
 import { useMemo, useState } from 'react';
 import { useStore } from '../state/store';
 import { selectAirport, selectController, copyText } from '../lib/actions';
 import { ago, dash, fmtDuration, fmtFreq, fmtZulu } from '../lib/format';
 import { ATC_COLORS } from '../map/controller';
 import { Badge, Empty, KV, Panel, Section } from './ui';
-import { IconCopy, IconCrosshair, IconTower } from './Icons';
+import { IconCopy, IconCrosshair, IconShare, IconTower } from './Icons';
 import { getAirport } from '../data/airports';
 import { FeedProblem } from './TrafficDirectory';
 import type { AtcPosition, Controller } from '../types';
@@ -84,6 +86,7 @@ export function ATCStations() {
 export function AtcDetailsPanel({ c }: { c: Controller }) {
   const st = useStore.getState();
   const ap = getAirport(c.airport);
+  const fir = firForCallsign(c.callsign);
   return (
     <Panel
       side="right"
@@ -99,8 +102,8 @@ export function AtcDetailsPanel({ c }: { c: Controller }) {
       onClose={() => st.select(null)}
       actions={
         <>
-          {c.lat != null && (
-            <button className="chip-btn" onClick={() => st.camera_({ type: 'fly', center: [c.lon!, c.lat!], zoom: 9 })}>
+          {(c.lat != null || fir) && (
+            <button className="chip-btn" onClick={() => selectController(c)}>
               <IconCrosshair size={15} /> Locate
             </button>
           )}
@@ -114,6 +117,9 @@ export function AtcDetailsPanel({ c }: { c: Controller }) {
               Airport
             </button>
           )}
+          <button className="chip-btn" onClick={() => shareSelection(`${c.callsign} on IVAO WebEye`, { kind: 'atc', key: c.key })} title="Copy a link to this station">
+            <IconShare size={15} /> Share
+          </button>
         </>
       }
     >
@@ -128,7 +134,8 @@ export function AtcDetailsPanel({ c }: { c: Controller }) {
           <KV k="Online" v={c.connectedAt ? fmtDuration((Date.now() - new Date(c.connectedAt).getTime()) / 1000) : dash} />
           <KV k="IVAO VID" v={c.vid} />
           <KV k="Airport" v={ap ? `${ap.icao} · ${ap.city || ap.name}` : dash} mono={false} />
-          <KV k="Map position" v={c.locationSource === 'feed' ? 'From feed' : c.locationSource === 'airport' ? 'Airport reference point' : 'Not plotted'} mono={false} wide note="Coverage rings on the map are indicative only, not real sector boundaries" />
+          {fir && <KV k="Airspace" v={`${fir.n} (${fir.b.join(', ')})`} mono={false} wide note="Boundary from the VATSpy Data Project; the controller's actual sector split may differ" />}
+          <KV k="Map position" v={fir ? 'FIR boundary' : c.locationSource === 'feed' ? 'From feed' : c.locationSource === 'airport' ? 'Airport reference point' : 'Not plotted'} mono={false} wide note={fir ? undefined : 'Coverage rings on the map are indicative only, not real sector boundaries'} />
         </div>
       </Section>
       <Section title="ATIS / Information" aside={c.atisTime ? <span className="mono dim">{fmtZulu(c.atisTime)} · {ago(c.atisTime)}</span> : undefined}>

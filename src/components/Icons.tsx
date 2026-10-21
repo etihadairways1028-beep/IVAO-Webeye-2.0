@@ -26,6 +26,20 @@ export const IconRunway = (p: P) => (
     <path d="M4 21h16" />
   </Svg>
 );
+export const IconSector = (p: P) => (
+  <Svg {...p}>
+    <path d="M4 6l7-3 9 4-2 11-8 3-6-5z" strokeDasharray="2.5 2" />
+    <path d="M11 3l-1 18" strokeDasharray="2.5 2" />
+  </Svg>
+);
+export const IconShare = (p: P) => (
+  <Svg {...p}>
+    <circle cx="6" cy="12" r="2.5" />
+    <circle cx="18" cy="6" r="2.5" />
+    <circle cx="18" cy="18" r="2.5" />
+    <path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6" />
+  </Svg>
+);
 export const IconSearch = (p: P) => (
   <Svg {...p}>
     <circle cx="11" cy="11" r="6.5" />

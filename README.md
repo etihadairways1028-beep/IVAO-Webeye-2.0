@@ -25,6 +25,7 @@ No API keys are required.
 | METAR / TAF | NOAA Aviation Weather Center Data API | Real-world weather; IVAO sessions may differ. |
 | Weather radar | RainViewer Weather Maps API | Free tier tiles are limited to zoom ≤ 7. |
 | Airports & runways | OurAirports (public domain), bundled in `public/data` | Rebuild with `npm run build:data <dir>` after downloading `airports.csv` + `runways.csv`. |
+| FIR boundaries | [VATSpy Data Project](https://github.com/vatsimnetwork/vatspy-data-project), CC BY-SA 4.0, simplified in `public/data/firs*.json` | Those two files remain under CC BY-SA 4.0. |
 | Coastlines / borders | Natural Earth 1:50m (public domain), bundled | Powers Radar mode and the offline fallback basemap. |
 | Basemaps | CARTO Dark Matter / Voyager, Esri World Imagery | Attribution shown on-map. CARTO basemaps are free for non-commercial use; check CARTO/Esri terms before commercial deployment. |
 
@@ -50,6 +51,10 @@ If a provider blocks cross-origin requests from the Pages site, deploy `proxy/cl
 (Settings → Secrets and variables → Actions → Variables) and re-run the workflow.
 
 ## New in 2.1
+
+- **FIR boundaries**: airspace lines on the map; when a centre (CTR/FSS) is online its sector fills amber and the station badge sits inside it. Toggle under Map → FIR boundaries.
+- **Shareable links**: the address bar follows what you select (`#f=BAW123`, `#c=EGTT_CTR`, `#a=EGLL`). The Share button copies it, or opens the phone share sheet.
+- **Install as an app**: manifest + service worker. Chrome/Edge/Android show an Install button; on iPhone use Share → Add to Home Screen. Only the app shell and bundled data are cached; live data is never served from cache.
 
 - **SimBrief navlog**: every waypoint with airway, altitude, distance, ETE, ETA and fuel; passed waypoints dim,
   the next one is highlighted, ETAs switch to live estimates once your callsign is online; full OFP summary

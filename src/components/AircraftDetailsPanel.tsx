@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../state/store';
 import { getAirport } from '../data/airports';
-import { copyText, selectAirport } from '../lib/actions';
+import { selectAirport } from '../lib/actions';
 import { ago, dash, fmtAlt, fmtDuration, fmtHdg, fmtKt, fmtLat, fmtLon, fmtNm, fmtVs, fmtZulu, RULES_LABEL, WAKE_LABEL } from '../lib/format';
 import { distanceNm } from '../lib/geo';
 import { Badge, KV, Panel, Section } from './ui';
-import { IconClock, IconCopy, IconCrosshair, IconFollow, IconGauge, IconPlane, IconRoute, IconUser } from './Icons';
+import { IconClock, IconCrosshair, IconFollow, IconGauge, IconPlane, IconRoute, IconShare, IconUser } from './Icons';
+import { shareSelection } from '../lib/share';
 import type { Flight } from '../types';
 import { flightProgress, type Progress } from '../lib/progress';
 
@@ -95,8 +96,8 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
           <button className={`chip-btn ${showRoute ? 'on' : ''}`} aria-pressed={showRoute} onClick={() => st.setShowRoute(!showRoute)} title="Show route">
             <IconRoute size={15} /> Route
           </button>
-          <button className="chip-btn" onClick={() => copyText(f.callsign)} title="Copy callsign">
-            <IconCopy size={15} /> Copy
+          <button className="chip-btn" onClick={() => shareSelection(`${f.callsign} on IVAO WebEye`, { kind: 'flight', key: f.key })} title="Copy a link to this flight">
+            <IconShare size={15} /> Share
           </button>
         </>
       }

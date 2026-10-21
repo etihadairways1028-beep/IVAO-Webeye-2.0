@@ -2,7 +2,7 @@ import { useStore, type MapStyleId } from '../state/store';
 import { STYLE_META } from '../map/styles';
 import { ALT_RAMP, ATC_COLORS } from '../map/controller';
 import { Seg, Toggle } from './ui';
-import { IconCloud, IconRunway, IconTower, IconTrail, IconX } from './Icons';
+import { IconCloud, IconRunway, IconSector, IconTower, IconTrail, IconX } from './Icons';
 import { ago } from '../lib/format';
 
 const SWATCH: Record<MapStyleId, string> = {
@@ -57,6 +57,7 @@ export function MapLayerControls() {
         checked={layers.atc}
         onChange={(v) => setLayer('atc', v)}
       />
+      <Toggle icon={<IconSector size={16} />} label="FIR boundaries" hint="Airspace sectors; online centres light up in amber" checked={layers.firs} onChange={(v) => setLayer('firs', v)} />
       <Toggle
         icon={<IconCloud size={16} />}
         label="Weather radar"

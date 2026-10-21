@@ -17,6 +17,7 @@ import { IconAlert, IconPlane, IconRunway, IconTower, IconUser, IconX } from './
 import { loadAirports } from './data/airports';
 import { startFeed, retryNow } from './data/feed';
 import { toggleFullscreen } from './lib/actions';
+import { useShareLinks } from './lib/share';
 
 function NavRail() {
   const panel = useStore((s) => s.panel);
@@ -151,6 +152,7 @@ export default function App() {
   const flightMap = useStore((s) => s.flightMap);
   const controllers = useStore((s) => s.controllers);
   useShortcuts();
+  useShareLinks();
 
   useEffect(() => {
     loadAirports()

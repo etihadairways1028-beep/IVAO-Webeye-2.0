@@ -1,11 +1,13 @@
 import { useStore } from '../state/store';
 import { IconLogo, IconX } from './Icons';
+import { useInstall } from '../lib/install';
 
 export const APP_VERSION = '2.1';
 
 /** Product information, data attribution and the independence notice. */
 export function About() {
   const setOverlay = useStore((s) => s.setOverlay);
+  const { mode, install } = useInstall();
   return (
     <div className="popover glass center about" role="dialog" aria-label="About IVAO WebEye">
       <div className="popover-head">
@@ -48,6 +50,10 @@ export function About() {
             <td>© OpenStreetMap contributors</td>
           </tr>
           <tr>
+            <th>FIR boundaries</th>
+            <td>VATSpy Data Project (CC BY-SA 4.0)</td>
+          </tr>
+          <tr>
             <th>Weather</th>
             <td>NOAA Aviation Weather Center, RainViewer</td>
           </tr>
@@ -57,7 +63,17 @@ export function About() {
           </tr>
         </tbody>
       </table>
+      {mode === 'ios' && (
+        <p className="dim small">
+          To install on iPhone or iPad: tap Share in Safari, then <strong>Add to Home Screen</strong>.
+        </p>
+      )}
       <div className="about-links">
+        {mode === 'prompt' && (
+          <button className="link-btn" onClick={install}>
+            Install app
+          </button>
+        )}
         <a className="link-btn" href="https://github.com/etihadairways1028-beep/IVAO-Webeye-2.0" target="_blank" rel="noopener noreferrer">
           Source code
         </a>

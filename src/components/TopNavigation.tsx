@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../state/store';
-import { IconExpand, IconInfo, IconLayers, IconLogo, IconRadar, IconSearch, IconSettings, IconShrink } from './Icons';
+import { IconExpand, IconImport, IconInfo, IconLayers, IconLogo, IconRadar, IconSearch, IconSettings, IconShrink } from './Icons';
+import { useInstall } from '../lib/install';
 import { FlightSearch } from './FlightSearch';
 import { toggleFullscreen } from '../lib/actions';
 import { ago, fmtZulu } from '../lib/format';
@@ -53,6 +54,7 @@ export function TopNavigation({ visibleCount }: { visibleCount: number }) {
   const status = useStore((s) => s.status);
   const overlay = useStore((s) => s.overlay);
   const setOverlay = useStore((s) => s.setOverlay);
+  const inst = useInstall();
   const mapStyle = useStore((s) => s.prefs.mapStyle);
   const lastStyle = useStore((s) => s.prefs.lastNonRadarStyle);
   const setPrefs = useStore((s) => s.setPrefs);
@@ -103,6 +105,11 @@ export function TopNavigation({ visibleCount }: { visibleCount: number }) {
         <button className={`icon-btn ${overlay === 'layers' ? 'on' : ''}`} aria-label="Map layers" title="Map layers (M)" aria-expanded={overlay === 'layers'} onClick={() => setOverlay(overlay === 'layers' ? null : 'layers')}>
           <IconLayers />
         </button>
+        {inst.mode === 'prompt' && (
+          <button className="icon-btn" aria-label="Install app" title="Install IVAO WebEye as an app" onClick={inst.install}>
+            <IconImport />
+          </button>
+        )}
         <button className={`icon-btn ${overlay === 'about' ? 'on' : ''}`} aria-label="About IVAO WebEye" title="About" aria-expanded={overlay === 'about'} onClick={() => setOverlay(overlay === 'about' ? null : 'about')}>
           <IconInfo />
         </button>
