@@ -54,6 +54,7 @@ If a provider blocks cross-origin requests from the Pages site, deploy `proxy/cl
 
 - **FIR boundaries**: airspace lines on the map; when a centre (CTR/FSS) is online its sector fills amber and the station badge sits inside it. Toggle under Map → FIR boundaries.
 - **Shareable links**: the address bar follows what you select (`#f=BAW123`, `#c=EGTT_CTR`, `#a=EGLL`). The Share button copies it, or opens the phone share sheet.
+- **3D globe**: the 3D button (or G) switches between the flat chart and a globe with atmosphere; everything else works the same on both.
 - **Install as an app**: manifest + service worker. Chrome/Edge/Android show an Install button; on iPhone use Share → Add to Home Screen. Only the app shell and bundled data are cached; live data is never served from cache.
 
 - **SimBrief navlog**: every waypoint with airway, altitude, distance, ETE, ETA and fuel; passed waypoints dim,

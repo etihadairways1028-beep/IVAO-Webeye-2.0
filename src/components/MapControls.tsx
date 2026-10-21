@@ -7,6 +7,7 @@ export function MapControls() {
   const follow = useStore((s) => s.follow);
   const flightMap = useStore((s) => s.flightMap);
   const st = useStore.getState();
+  const globe = useStore((s) => s.prefs.globe);
   const f = selection?.kind === 'flight' ? flightMap.get(selection.key) : undefined;
   return (
     <div className="mapctl" role="toolbar" aria-label="Map controls">
@@ -16,6 +17,11 @@ export function MapControls() {
         </button>
         <button aria-label="Zoom out" title="Zoom out" onClick={() => getMapController()?.map.zoomOut()}>
           <IconMinus size={17} />
+        </button>
+      </div>
+      <div className="mapctl-group glass">
+        <button aria-label="3D globe" aria-pressed={globe} className={`txt ${globe ? 'on' : ''}`} title={globe ? 'Flat chart view (G)' : '3D globe view (G)'} onClick={() => st.setPrefs({ globe: !globe })}>
+          3D
         </button>
       </div>
       <div className="mapctl-group glass">

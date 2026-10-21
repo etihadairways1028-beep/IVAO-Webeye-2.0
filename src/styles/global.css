@@ -2120,3 +2120,7 @@ table.navlog {
     transform: translateX(260%);
   }
 }
+.mapctl-group button.txt {
+  font: 700 12px/1 'Roboto Mono', monospace;
+  letter-spacing: 0.02em;
+}

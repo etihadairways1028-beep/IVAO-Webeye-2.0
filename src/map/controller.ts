@@ -337,11 +337,30 @@ export class MapController {
 
     m.addLayer({ id: 'airport-sel', type: 'circle', source: 'route', filter: ['==', ['get', 'kind'], 'airport'], paint: { 'circle-radius': 14, 'circle-color': 'rgba(125,180,255,0.12)', 'circle-stroke-color': '#7db4ff', 'circle-stroke-width': 1.6 } });
 
+    this.applyProjection();
     this.pushAirports();
     this.pushAtc();
     this.pushRoute();
     this.pushPlan();
     this.pushAircraft();
+  }
+
+  /** Flat chart or 3D globe. The globe gets a thin blue atmosphere at low zoom, like the trailer. */
+  private applyProjection() {
+    const m = this.map;
+    const globe = this.prefs.globe;
+    m.setProjection({ type: globe ? 'globe' : 'mercator' });
+    if (!globe) return;
+    const light = this.styleId === 'standard';
+    m.setSky({
+      'sky-color': light ? '#cfe0f5' : '#03060d',
+      'horizon-color': light ? '#e8f0fb' : '#0b2a5a',
+      'fog-color': light ? '#ffffff' : '#03060d',
+      'sky-horizon-blend': 0.6,
+      'horizon-fog-blend': 0.6,
+      'fog-ground-blend': 0.8,
+      'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 0.85, 8, 0],
+    });
   }
 
   private vis(layer: keyof Prefs['layers']): 'visible' | 'none' {
@@ -625,6 +644,7 @@ export class MapController {
     }
     const m = this.map;
     if (!m.getLayer('aircraft')) return;
+    if (prev.globe !== p.globe) this.applyProjection();
     if (prev.labels !== p.labels) m.setLayoutProperty('aircraft-labels', 'text-field', this.labelExpr(p.labels));
     if (prev.colorBy !== p.colorBy) m.setPaintProperty('aircraft', 'icon-color', this.aircraftColor());
     for (const [key, layers] of [['airports', ['airports', 'airport-labels']], ['atc', ['atc', 'atc-labels', 'atc-ring-fill', 'atc-ring-line', 'fir-active-fill', 'fir-active-line']], ['firs', ['fir-lines']]] as const) {
@@ -648,7 +668,7 @@ export class MapController {
   }
 
   world() {
-    this.map.flyTo({ center: [20, 25], zoom: window.innerWidth < 700 ? 1.3 : 2.1, speed: 1.6, essential: true, padding: { top: 0, bottom: 0, left: 0, right: 0 } });
+    this.map.flyTo({ center: [20, 25], zoom: this.prefs.globe ? (window.innerWidth < 700 ? 1.1 : 1.7) : window.innerWidth < 700 ? 1.3 : 2.1, speed: 1.6, essential: true, padding: { top: 0, bottom: 0, left: 0, right: 0 } });
   }
 
   /** Keep the subject clear of floating panels. */

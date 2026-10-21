@@ -19,6 +19,7 @@ export interface Prefs {
   mapStyle: MapStyleId;
   lastNonRadarStyle: Exclude<MapStyleId, 'radar'>;
   labels: LabelMode;
+  globe: boolean;
   colorBy: 'uniform' | 'altitude';
   layers: { airports: boolean; atc: boolean; weather: boolean; trails: boolean; borders: boolean; firs: boolean };
   pollSec: 15 | 30 | 60;
@@ -35,6 +36,7 @@ const DEFAULT_PREFS: Prefs = {
   mapStyle: 'dark',
   lastNonRadarStyle: 'dark',
   labels: 'auto',
+  globe: false,
   colorBy: 'uniform',
   layers: { airports: true, atc: true, weather: false, trails: true, borders: true, firs: true },
   pollSec: 15,

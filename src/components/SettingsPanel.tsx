@@ -9,6 +9,7 @@ export const SHORTCUTS: [string, string][] = [
   ['F', 'Follow selected aircraft'],
   ['C', 'Centre on selection'],
   ['W', 'World view'],
+  ['G', '3D globe / flat chart'],
   ['R', 'Toggle radar mode'],
   ['L', 'Cycle label density'],
   ['M', 'Map layers'],
