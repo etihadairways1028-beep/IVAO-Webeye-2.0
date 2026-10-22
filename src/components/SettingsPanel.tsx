@@ -1,3 +1,4 @@
+import { StatusSection } from './StatusSection';
 import { useStore } from '../state/store';
 import { Seg } from './ui';
 import { IconX } from './Icons';
@@ -10,6 +11,7 @@ export const SHORTCUTS: [string, string][] = [
   ['C', 'Centre on selection'],
   ['W', 'World view'],
   ['G', '3D globe / flat chart'],
+  ['H', 'Filming mode: hide the interface'],
   ['R', 'Toggle radar mode'],
   ['L', 'Cycle label density'],
   ['M', 'Map layers'],
@@ -30,6 +32,9 @@ export function SettingsPanel() {
           <IconX size={16} />
         </button>
       </div>
+
+      <div className="pop-label">Status</div>
+      <StatusSection />
 
       <div className="pop-label">Data source</div>
       <Seg label="Data source" value={prefs.source} onChange={(source) => setPrefs({ source })} options={[{ value: 'live', label: 'Live IVAO' }, { value: 'demo', label: 'Demo data' }]} />

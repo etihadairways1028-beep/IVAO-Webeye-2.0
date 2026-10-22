@@ -90,8 +90,9 @@ export function FlightMap() {
 
   // Full session track ("from the gate") for the selected live flight; refreshed each minute.
   const selKey = useStore((s) => (s.selection?.kind === 'flight' ? s.selection.key : null));
+  const selLoaded = useStore((s) => (s.selection?.kind === 'flight' ? s.flightMap.has(s.selection.key) : false));
   useEffect(() => {
-    if (!selKey) return;
+    if (!selKey || !selLoaded) return;
     const f = useStore.getState().flightMap.get(selKey);
     if (!f || f.demo || f.sessionId <= 0) return;
     let alive = true;
@@ -102,22 +103,22 @@ export function FlightMap() {
       const last = pts.length ? pts[pts.length - 1].t : null;
       const since = last ? new Date(last).getTime() : undefined;
       return fetchSessionTrack(f.sessionId, ctrl.signal, since)
-        .then(({ points, source }) => {
+        .then(({ points, source, note }) => {
           if (!alive) return;
           pts = since && source === 'recorder' ? [...pts, ...points] : points;
           controller?.setTrack(pts);
-          useStore.setState({ trackInfo: { key: selKey, points: pts.length, error: null, source } });
+          useStore.setState({ trackInfo: { key: selKey, points: pts.length, error: null, source, note } });
         })
         .catch((e) => alive && !pts.length && useStore.setState({ trackInfo: { key: selKey, points: 0, error: e instanceof Error ? e.message : String(e), source: null } }));
     };
     load();
-    const id = window.setInterval(load, 120000);
+    const id = window.setInterval(load, 60000);
     return () => {
       alive = false;
       ctrl.abort();
       window.clearInterval(id);
     };
-  }, [selKey]);
+  }, [selKey, selLoaded]);
 
   // Airport ground charts: selected airport, or the airport a selected aircraft is at / near.
   useEffect(() => onChartsChange(() => controller?.refreshCharts()), []);

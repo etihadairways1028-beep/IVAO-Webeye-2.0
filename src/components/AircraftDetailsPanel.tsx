@@ -140,6 +140,13 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
             {f.route}
           </div>
         )}
+        <div className={`track-status ${trackInfo && trackInfo.points > 1 ? 'ok' : trackInfo ? 'warn' : ''}`}>
+          {!trackInfo
+            ? 'Loading the full track…'
+            : trackInfo.points > 1
+              ? `Full track: ${trackInfo.points} positions from ${trackInfo.source === 'recorder' ? 'the WebEye recorder (one a minute, from pushback)' : 'IVAO'}.`
+              : `Full track not available: ${trackInfo.note ?? trackInfo.error ?? 'no history yet'}. Showing what this browser has seen since you opened it, plus a dashed estimate from the departure airport.`}
+        </div>
         <div className="legend-row">
           <span className="lg lg-trail" /> {trackInfo && trackInfo.points > 1 ? (trackInfo.source === 'recorder' ? 'Flown track from pushback' : 'Flown track from gate (IVAO)') : 'Flown (recorded by this browser)'}
           {!(trackInfo && trackInfo.points > 1) && (
@@ -160,7 +167,7 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
         </div>
         <p className="fineprint">
           {planMatch ? 'Purple = your SimBrief route; distances and ETA follow it.' : 'The filed route is shown as text; plotted lines are a great-circle reference. Import this flight’s SimBrief OFP under My flight to draw the exact route.'}
-          {trackInfo?.error ? ` IVAO's full track for this flight isn't available here (${trackInfo.error}), so the solid line shows positions this browser has recorded, and the dashed part is an estimate from the departure airport. Your own and selected flights keep their trail when you reload.` : ''}
+
         </p>
       </Section>
 

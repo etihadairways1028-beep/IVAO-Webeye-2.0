@@ -2252,3 +2252,18 @@ html[data-right-panel='1'] .chart-chip { bottom: 70px; }
 .incoming-line { display: grid; grid-template-columns: 60px 1fr; gap: 8px; align-items: baseline; }
 .incoming-line .mono { color: #c9ffe0; }
 .incoming-note { font-size: 13px; }
+.track-status { font-size: 12px; padding: 7px 10px; border-radius: 8px; margin: 8px 0 4px; background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line); }
+.track-status.ok { border-color: rgba(255, 79, 195, 0.45); }
+.track-status.warn { border-color: rgba(245, 179, 60, 0.45); color: #f3d79a; }
+.status-list { display: grid; gap: 6px; margin-bottom: 4px; }
+.status-item { display: grid; grid-template-columns: 10px auto 1fr; gap: 8px; align-items: baseline; font-size: 12.5px; }
+.status-item > i { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); align-self: center; }
+.status-item.ok > i { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.status-item.bad > i { background: var(--amber); }
+.status-item .small { text-align: right; overflow-wrap: anywhere; }
+
+/* ───────── Filming mode (H): only the map, for clean screen recordings */
+html[data-film='1'] :is(.topbar, .rail, .panel, .popover, .mapctl, .telebar, .chart-chip, .banner, .splash) { display: none !important; }
+html[data-film='1'] .map { inset: 0 !important; cursor: none; }
+html[data-film='1'] .toast { bottom: 24px; }
+html[data-film='1'] .maplibregl-ctrl-attrib { opacity: 0.55; }

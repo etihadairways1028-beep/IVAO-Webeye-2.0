@@ -135,6 +135,13 @@ function useShortcuts() {
       else if (k === 'c' && f) s.camera_({ type: 'fly', center: [f.lon, f.lat] });
       else if (k === 'w') s.camera_({ type: 'world' });
       else if (k === 'g') s.setPrefs({ globe: !s.prefs.globe });
+      else if (k === 'h') {
+        // Filming mode: hide every panel and button, keep only the map.
+        const on = document.documentElement.dataset.film !== '1';
+        document.documentElement.dataset.film = on ? '1' : '0';
+        getMapController()?.map.resize();
+        if (on) s.notify('Filming mode: press H to bring the interface back');
+      }
       else if (k === 'r') s.setPrefs({ mapStyle: s.prefs.mapStyle === 'radar' ? s.prefs.lastNonRadarStyle : 'radar' });
       else if (k === 'l') s.setPrefs({ labels: s.prefs.labels === 'auto' ? 'full' : s.prefs.labels === 'full' ? 'off' : s.prefs.labels === 'off' ? 'callsign' : 'auto' });
       else if (k === 'm') s.setOverlay(s.overlay === 'layers' ? null : 'layers');

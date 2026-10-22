@@ -199,18 +199,31 @@ export interface TrackPoint {
  * one point per minute from pushback), otherwise IVAO's own tracks endpoint.
  * `since` (ms) asks the recorder only for newer points.
  */
-export async function fetchSessionTrack(sessionId: number, signal?: AbortSignal, since?: number): Promise<{ points: TrackPoint[]; source: 'recorder' | 'ivao' }> {
+export async function fetchSessionTrack(sessionId: number, signal?: AbortSignal, since?: number): Promise<{ points: TrackPoint[]; source: 'recorder' | 'ivao'; note?: string }> {
+  let note = '';
   if (RECORDER_URL) {
     try {
       const res = await fetch(`${RECORDER_URL}/tracks/${sessionId}${since ? `?since=${since}` : ''}`, { signal, headers: { Accept: 'application/json' } });
-      if (res.ok) return { points: parseTrack(await res.json()), source: 'recorder' };
+      if (res.ok) {
+        const points = parseTrack(await res.json());
+        // An incremental refresh may legitimately be empty; a first load with no history falls through to IVAO.
+        if (since || points.length >= 2) return { points, source: 'recorder' };
+        note = 'the WebEye recorder has no history for this flight yet';
+      } else note = `the WebEye recorder answered ${res.status}`;
     } catch (e) {
       if ((e as Error).name === 'AbortError') throw e;
+      note = 'the WebEye recorder could not be reached';
     }
   }
-  const res = await fetch(`${IVAO_BASE}/v2/tracker/sessions/${sessionId}/tracks`, { signal, headers: { Accept: 'application/json' } });
-  if (!res.ok) throw new Error(`IVAO tracks HTTP ${res.status}`);
-  return { points: parseTrack(await res.json()), source: 'ivao' };
+  try {
+    const res = await fetch(`${IVAO_BASE}/v2/tracker/sessions/${sessionId}/tracks`, { signal, headers: { Accept: 'application/json' } });
+    if (!res.ok) throw new Error(`IVAO track history answered ${res.status}`);
+    const points = parseTrack(await res.json());
+    return { points, source: 'ivao', note: points.length ? undefined : note || 'IVAO has no track history for this flight' };
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') throw e;
+    throw new Error(note ? `${note}, and IVAO's track history isn't available here` : (e as Error).message);
+  }
 }
 
 function parseTrack(raw: unknown): TrackPoint[] {
