@@ -34,8 +34,7 @@ export function AtcDesk() {
 
 function Verify() {
   const controllers = useStore((s) => s.controllers);
-  const prefs = useStore((s) => s.prefs);
-  const [vid, setVid] = useState(() => localStorage.getItem('webeye2.atcVid') ?? prefs.myVid ?? '');
+  const [vid, setVid] = useState(() => { try { return localStorage.getItem('webeye2.atcVid') ?? ''; } catch { return ''; } });
   const [station, setStation] = useState('');
   const [code, setCode] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -94,7 +93,7 @@ function Verify() {
       <Section title="1. Which station are you?">
         <p className="dim small">Connect to IVAO in your ATC app first, then type your VID.</p>
         <input className="input mono" inputMode="numeric" placeholder="Your IVAO VID" value={vid} onChange={(e) => setVid(e.target.value.replace(/\D/g, ''))} aria-label="Your IVAO VID" disabled={!!code} />
-        {vid.length >= 4 && !mine.length && <p className="warn small">No ATC station is online under VID {vid} right now.</p>}
+        {vid.length >= 4 && !mine.length && <p className="dim small">No ATC station is online under VID {vid} yet. It appears here about 15 seconds after you connect.</p>}
         {mine.length > 0 && (
           <div className="desk-stations">
             {mine.map((c) => (
@@ -109,7 +108,7 @@ function Verify() {
         )}
         {!code && (
           <button className="btn" disabled={!station || busy} onClick={start}>
-            {busy ? 'Checking…' : `I'm ${station || '…'}`}
+            {busy ? 'Checking…' : station ? `Continue as ${station}` : 'Pick your station'}
           </button>
         )}
       </Section>

@@ -84,3 +84,38 @@ export const REGIONS: { id: Region; label: string; box?: [number, number, number
 export function inBox(lon: number, lat: number, box: [number, number, number, number]) {
   return lon >= box[0] && lat >= box[1] && lon <= box[2] && lat <= box[3];
 }
+
+/**
+ * Smooth a flown track for drawing: drop near-duplicate points, then pass a centripetal
+ * Catmull-Rom spline through the rest, so turns read as curves instead of corners. The curve
+ * still goes through every reported position. Longitudes must already be continuous (unwrap).
+ */
+export function smoothPath(pts: [number, number][], perSpan = 6): [number, number][] {
+  if (pts.length < 3) return pts;
+  const k = Math.cos(((pts[Math.floor(pts.length / 2)][1] || 0) * Math.PI) / 180) || 1;
+  // 1. drop points closer than ~40 m to the previous kept point (feed jitter, stationary aircraft)
+  const p: [number, number][] = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    const a = p[p.length - 1], b = pts[i];
+    if (Math.hypot((b[0] - a[0]) * k, b[1] - a[1]) > 0.00036 || i === pts.length - 1) p.push(b);
+  }
+  if (p.length < 3) return p;
+  const X = (q: [number, number]) => [q[0] * k, q[1]] as const;
+  const out: [number, number][] = [p[0]];
+  for (let i = 0; i < p.length - 1; i++) {
+    const P0 = X(p[Math.max(0, i - 1)]), P1 = X(p[i]), P2 = X(p[i + 1]), P3 = X(p[Math.min(p.length - 1, i + 2)]);
+    const d = (a: readonly number[], b: readonly number[]) => Math.max(1e-9, Math.sqrt(Math.hypot(b[0] - a[0], b[1] - a[1])));
+    const t0 = 0, t1 = t0 + d(P0, P1), t2 = t1 + d(P1, P2), t3 = t2 + d(P2, P3);
+    // long straight legs need no extra points; short turning ones get more
+    const n = perSpan;
+    for (let s = 1; s <= n; s++) {
+      const t = t1 + ((t2 - t1) * s) / n;
+      const L = (a: readonly number[], b: readonly number[], ta: number, tb: number) => [((tb - t) / (tb - ta)) * a[0] + ((t - ta) / (tb - ta)) * b[0], ((tb - t) / (tb - ta)) * a[1] + ((t - ta) / (tb - ta)) * b[1]];
+      const A1 = L(P0, P1, t0, t1), A2 = L(P1, P2, t1, t2), A3 = L(P2, P3, t2, t3);
+      const B1 = L(A1, A2, t0, t2), B2 = L(A2, A3, t1, t3);
+      const C = L(B1, B2, t1, t2);
+      out.push([C[0] / k, C[1]]);
+    }
+  }
+  return out;
+}

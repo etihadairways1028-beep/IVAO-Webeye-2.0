@@ -126,14 +126,14 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
 
       <Section title="Route" icon={<IconRoute size={15} />}>
         <div className="grid-kv">
-          <KV k="Cruise" v={f.cruiseLevel ?? dash} />
-          <KV k="Cruise speed" v={f.cruiseSpeed ?? dash} />
+          <KV optional k="Cruise" v={f.cruiseLevel ?? dash} />
+          <KV optional k="Cruise speed" v={f.cruiseSpeed ?? dash} />
           <KV k="Remaining" v={fmtNm(pr.remainingNm)} note={pr.source === 'plan' ? 'Along your SimBrief route' : 'Distance to arrival as reported by IVAO'} />
           <KV k="Flown" v={fmtNm(pr.flownNm)} note={pr.source === 'plan' ? 'Along your SimBrief route' : 'Distance from departure as reported by IVAO'} />
-          <KV k="Filed EET" v={fmtDuration(f.eet)} />
+          <KV optional k="Filed EET" v={fmtDuration(f.eet)} />
           <KV k="Est. arrival" v={pr.eta ? fmtZulu(pr.eta) : dash} note="Estimated from remaining distance at current groundspeed — not authoritative" />
-          <KV k="Alternate" v={f.alt ?? dash} />
-          <KV k="POB" v={f.pob ?? dash} />
+          <KV optional k="Alternate" v={f.alt ?? dash} />
+          <KV optional k="POB" v={f.pob ?? dash} />
         </div>
         {f.route && (
           <div className="route-text mono" aria-label="Filed route">
@@ -168,9 +168,9 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
         <div className="grid-kv">
           <KV k="IVAO VID" v={f.demo ? `${f.vid} (demo)` : f.vid} />
           <KV k="Online" v={f.connectedAt ? fmtDuration((Date.now() - new Date(f.connectedAt).getTime()) / 1000) : dash} />
-          <KV k="Server" v={f.server ?? dash} />
-          <KV k="Simulator" v={f.simulator ?? dash} />
-          <KV k="Software" v={f.software ?? dash} wide />
+          <KV optional k="Server" v={f.server ?? dash} />
+          <KV optional k="Simulator" v={f.simulator ?? dash} />
+          <KV optional k="Software" v={f.software ?? dash} wide />
         </div>
         {f.remarks && (
           <details className="remarks">

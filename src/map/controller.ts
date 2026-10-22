@@ -5,7 +5,7 @@ import { addAircraftIcons } from './icons';
 import { FONT_BOLD, FONT_REG, offlineStyle, styleFor, tintDark } from './styles';
 import { allAirports, getAirport } from '../data/airports';
 import { trails } from '../data/feed';
-import { circle, destination, distanceNm, greatCircle, unwrap } from '../lib/geo';
+import { circle, destination, distanceNm, greatCircle, smoothPath, unwrap } from '../lib/geo';
 import { fmtAltShort } from '../lib/format';
 import type { RadarFrame } from '../data/weather';
 import type { TrackPoint } from '../data/ivao';
@@ -494,6 +494,20 @@ export class MapController {
     return [...before, ...local.filter((p) => p[3] != null).map((p) => [p[0], p[1]] as [number, number])];
   }
 
+  /** Smoothed copy of a flown line, recomputed only when a new position arrives. */
+  private smoothCache = new Map<string, { sig: string; pts: [number, number][] }>();
+  private smoothed(key: string, src: [number, number][]): [number, number][] {
+    if (src.length < 3) return src;
+    const last = src[src.length - 1];
+    const sig = `${src.length}:${last[0]}:${last[1]}`;
+    const hit = this.smoothCache.get(key);
+    if (hit && hit.sig === sig) return hit.pts;
+    const pts = smoothPath(unwrap(src));
+    if (this.smoothCache.size > 20) this.smoothCache.clear();
+    this.smoothCache.set(key, { sig, pts });
+    return pts;
+  }
+
   private pushTails() {
     if (!this.map.getSource('tails')) return;
     const now = Date.now();
@@ -505,7 +519,7 @@ export class MapController {
         if (!t || t.length < 2) continue;
         const pts = t.slice(-8).map((p) => [p[0], p[1]] as [number, number]);
         pts.push(this.pos(f, now));
-        features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: unwrap(pts) }, properties: { mine: this.myVid != null && f.vid === this.myVid } });
+        features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: smoothPath(unwrap(pts), 4) }, properties: { mine: this.myVid != null && f.vid === this.myVid } });
       }
     }
     this.set('tails', { type: 'FeatureCollection', features });
@@ -614,7 +628,7 @@ export class MapController {
       }
       // Flown track: full IVAO session history (from the gate) when available, else what this browser observed.
       const src = this.flownLine(f);
-      if (src.length > 1 || (src.length === 1 && !f.onGround)) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: unwrap([...src, [lon, lat]]) }, properties: { kind: 'trail' } });
+      if (src.length > 1 || (src.length === 1 && !f.onGround)) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: unwrap([...this.smoothed(f.key, src), [lon, lat]]) }, properties: { kind: 'trail' } });
       // Before the recorded part: an estimated path from the departure airport, drawn dashed.
       const first = src[0] ?? [lon, lat];
       const fullTrack = this.track && this.track.length > 1;
@@ -636,7 +650,7 @@ export class MapController {
     const mine = this.myVid != null ? this.flights.find((x) => x.vid === this.myVid) : undefined;
     if (mine && mine !== f) {
       const t = (trails.get(mine.key) ?? []).map((p) => [p[0], p[1]] as [number, number]);
-      if (t.length > 1) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: unwrap([...t, this.pos(mine, Date.now())]) }, properties: { kind: 'trail' } });
+      if (t.length > 1) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: unwrap([...this.smoothed(`m${mine.key}`, t), this.pos(mine, Date.now())]) }, properties: { kind: 'trail' } });
     }
     const s = this.selection;
     if (s?.kind === 'airport') {

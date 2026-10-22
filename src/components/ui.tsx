@@ -37,7 +37,9 @@ export function Section({ title, icon, children, aside }: { title: string; icon?
   );
 }
 
-export function KV({ k, v, mono = true, note, wide }: { k: string; v: ReactNode; mono?: boolean; note?: string; wide?: boolean }) {
+export function KV({ k, v, mono = true, note, wide, optional }: { k: string; v: ReactNode; mono?: boolean; note?: string; wide?: boolean; optional?: boolean }) {
+  // Optional fields the pilot didn't file are left out rather than shown as a dash.
+  if (optional && (v == null || v === '' || v === '—')) return null;
   return (
     <div className={`kv ${wide ? 'wide' : ''}`} title={note}>
       <div className="kv-k">

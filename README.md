@@ -1,7 +1,12 @@
-# IVAO WebEye 2.0
+# IVAO WebEye 2.1
 
-A next-generation, map-first traffic viewer for the IVAO network — live pilots and ATC,
-airport explorer, radar mode, SimBrief import and "track my VID".
+A map-first live viewer for the IVAO network: pilots and ATC, airspace sectors, full flight
+tracks, SimBrief navlog with live ETAs, ground charts, taxi routes, an ATC desk for sending
+clearances, radar mode and a 3D globe.
+
+**Live:** https://ivao-webeye-2-0.pages.dev · also at https://etihadairways1028-beep.github.io/IVAO-Webeye-2.0/
+
+Independent community project, not an official IVAO product. For simulation use only.
 
 React 18 · TypeScript · Vite · MapLibre GL JS · Zustand
 
