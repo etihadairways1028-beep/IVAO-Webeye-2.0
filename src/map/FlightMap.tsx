@@ -5,20 +5,27 @@ import { useStore } from '../state/store';
 import { fetchRadarFrame } from '../data/weather';
 import { allAirports, getAirport } from '../data/airports';
 import { fetchSessionTrack, type TrackPoint } from '../data/ivao';
-import { chartState, loadChart, onChartsChange } from '../data/charts';
+import { canRetry, chartState, loadChart, onChartsChange } from '../data/charts';
 
 /** Zoomed in on an airport (any airport, ATC or not)? Load its ground chart automatically. */
 let chartTimer = 0;
 function autoChart(b: [number, number, number, number], zoom: number) {
   window.clearTimeout(chartTimer);
-  if (zoom < 11.2) return;
+  if (zoom < 11.2) {
+    if (useStore.getState().chartFocus) useStore.setState({ chartFocus: null });
+    return;
+  }
   chartTimer = window.setTimeout(() => {
     const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
     const k = Math.cos((cy * Math.PI) / 180);
     const inView = allAirports().filter((a) => a.lon >= b[0] && a.lon <= b[2] && a.lat >= b[1] && a.lat <= b[3]);
     inView.sort((a, z) => ((a.lon - cx) * k) ** 2 + (a.lat - cy) ** 2 - (((z.lon - cx) * k) ** 2 + (z.lat - cy) ** 2));
     // Nearest airport first, plus a neighbour when two fields share the view; skip ones already tried.
-    for (const a of inView.slice(0, 2)) if (!chartState(a.icao)) loadChart(a.icao);
+    for (const a of inView.slice(0, 2)) {
+      const st = chartState(a.icao);
+      if (!st || (st.status === 'error' && canRetry(a.icao))) loadChart(a.icao);
+    }
+    useStore.setState({ chartFocus: inView[0]?.icao ?? null });
   }, 700);
 }
 

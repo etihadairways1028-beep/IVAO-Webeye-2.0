@@ -1,7 +1,7 @@
 // Airport ground charts from OpenStreetMap (© OpenStreetMap contributors, ODbL)
 // via the public Overpass API: runways, taxiways (with names), aprons, terminals,
 // parking stands, gates and holding points. Fetched once per airport and cached.
-import { OVERPASS_URL, CORS_HINT } from './endpoints';
+import { OVERPASS_MIRRORS } from './endpoints';
 import { getAirport } from './airports';
 
 type FC = GeoJSON.FeatureCollection;
@@ -57,6 +57,37 @@ function toGeoJSON(els: OsmEl[]): FC {
   return { type: 'FeatureCollection', features };
 }
 
+/** Ask each OpenStreetMap server in turn (20 s each) until one answers. */
+async function fetchOverpass(q: string): Promise<{ elements?: OsmEl[] }> {
+  let last = '';
+  for (const url of OVERPASS_MIRRORS) {
+    const ctrl = new AbortController();
+    const timer = window.setTimeout(() => ctrl.abort(), 20000);
+    try {
+      const r = await fetch(url, { method: 'POST', body: new URLSearchParams({ data: q }), signal: ctrl.signal });
+      if (!r.ok) {
+        last = r.status === 429 || r.status === 504 ? 'chart servers are busy' : `chart server error ${r.status}`;
+        continue;
+      }
+      const j = (await r.json()) as { elements?: OsmEl[]; remark?: string };
+      if (!j.elements?.length && j.remark) {
+        last = 'chart server timed out';
+        continue;
+      }
+      return j;
+    } catch (e) {
+      last = (e as Error).name === 'AbortError' ? 'chart server timed out' : 'could not reach the chart servers';
+    } finally {
+      window.clearTimeout(timer);
+    }
+  }
+  throw new Error(`Ground chart unavailable: ${last}. Try again in a minute.`);
+}
+
+const failedAt = new Map<string, number>();
+/** Errors may be retried automatically after a short pause (used when zooming in). */
+export const canRetry = (icao: string) => Date.now() - (failedAt.get(icao) ?? 0) > 90000;
+
 export function loadChart(icao: string): Promise<ChartState> {
   const hit = cache.get(icao);
   if (hit && hit.status !== 'error') return Promise.resolve(hit);
@@ -70,17 +101,16 @@ export function loadChart(icao: string): Promise<ChartState> {
   const q = `[out:json][timeout:25];(way["aeroway"~"^(runway|taxiway|taxilane|apron|terminal|hangar|parking_position|holding_position|stopway|gate)$"](${bbox});node["aeroway"~"^(gate|parking_position|holding_position)$"](${bbox}););out geom;`;
   cache.set(icao, { status: 'loading' });
   emit();
-  const job = fetch(OVERPASS_URL, { method: 'POST', body: new URLSearchParams({ data: q }) })
-    .then(async (r) => {
-      if (!r.ok) throw new Error(r.status === 429 ? 'OpenStreetMap server busy — try again shortly' : `Overpass HTTP ${r.status}`);
-      const j = (await r.json()) as { elements?: OsmEl[] };
+  const job = fetchOverpass(q)
+    .then(async (j) => {
       const fc = toGeoJSON(j.elements ?? []);
       const count = (k: string) => fc.features.filter((f) => f.properties!.kind === k && f.geometry.type !== 'Polygon').length;
       const st: ChartState = { status: 'ready', fc, counts: { taxiways: new Set(fc.features.filter((f) => f.properties!.kind === 'taxiway' && f.properties!.label).map((f) => f.properties!.label)).size, stands: count('parking_position'), gates: count('gate') } };
       return st;
     })
-    .catch((e): ChartState => ({ status: 'error', error: e instanceof TypeError ? `Network error reaching OpenStreetMap${CORS_HINT}` : e instanceof Error ? e.message : String(e) }))
+    .catch((e): ChartState => ({ status: 'error', error: e instanceof Error ? e.message : String(e) }))
     .then((st) => {
+      if (st.status === 'error') failedAt.set(icao, Date.now());
       cache.set(icao, st);
       pending.delete(icao);
       emit();

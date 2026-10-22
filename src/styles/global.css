@@ -2221,3 +2221,34 @@ html[data-glass='1'] .maplibregl-ctrl-attrib {
     --glass-fill: rgba(17, 24, 36, 0.92);
   }
 }
+.chart-chip { position: absolute; left: 50%; transform: translateX(-50%); bottom: 18px; z-index: 12; display: flex; gap: 8px; align-items: center; padding: 7px 12px; border-radius: 999px; font-size: 12.5px; white-space: nowrap; max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; }
+.chart-chip.ready { opacity: 0.85; }
+html[data-right-panel='1'] .chart-chip { bottom: 70px; }
+@media (max-width: 759px) { .chart-chip { bottom: 84px; } }
+
+/* ───────── ATC desk + incoming clearance */
+.desk-stations, .desk-pilots { display: grid; gap: 6px; margin: 8px 0; }
+.desk-station, .desk-pilot { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface-2); }
+.desk-station { flex-direction: column; align-items: flex-start; gap: 2px; }
+.desk-station.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.desk-pilot:hover, .desk-station:hover { border-color: var(--line-2); }
+.desk-pilot .badge { margin-left: auto; }
+.desk-code { display: flex; align-items: center; gap: 10px; justify-content: center; margin: 10px 0; padding: 14px; border-radius: 12px; border: 1px dashed var(--accent); background: rgba(61, 139, 253, 0.1); }
+.desk-code .mono { font-size: 30px; font-weight: 700; letter-spacing: 0.08em; color: #cfe2ff; }
+.desk-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; margin: 4px 0 6px; border-radius: 12px; background: rgba(47, 214, 181, 0.1); border: 1px solid rgba(47, 214, 181, 0.4); }
+.desk-cs { font-size: 18px; color: #b8fff0; }
+.desk-msg { padding: 0 2px; }
+.row-gap { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
+.row-gap .input { flex: 1; }
+.chip.on { border-color: var(--accent); color: #fff; box-shadow: inset 0 0 0 1px var(--accent); }
+.desk-route { display: flex; gap: 10px; align-items: center; margin: 8px 0; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); }
+.desk-route .mono { flex: 1; color: #c9ffe0; }
+.desk-send { width: 100%; margin-top: 12px; }
+.desk-sent { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.desk-sent li { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 6px 2px; border-bottom: 1px solid var(--line); }
+.incoming { margin: 8px 0 4px; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(57, 229, 140, 0.55); background: rgba(57, 229, 140, 0.1); display: grid; gap: 8px; }
+.incoming.acked { border-color: var(--line-2); background: var(--surface-2); }
+.incoming-head { display: flex; justify-content: space-between; align-items: baseline; }
+.incoming-line { display: grid; grid-template-columns: 60px 1fr; gap: 8px; align-items: baseline; }
+.incoming-line .mono { color: #c9ffe0; }
+.incoming-note { font-size: 13px; }

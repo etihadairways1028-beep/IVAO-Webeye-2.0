@@ -12,8 +12,11 @@ import { SettingsPanel, SHORTCUTS } from './components/SettingsPanel';
 import { MapControls } from './components/MapControls';
 import { TelemetryBar } from './components/TelemetryBar';
 import { About } from './components/About';
+import { ChartChip } from './components/ChartChip';
 import { IconLogo } from './components/Icons';
-import { IconAlert, IconPlane, IconRunway, IconTower, IconUser, IconX } from './components/Icons';
+import { IconAlert, IconHeadset, IconPlane, IconRunway, IconTower, IconUser, IconX } from './components/Icons';
+import { AtcDesk } from './components/AtcDesk';
+import { usePilotClearance } from './lib/clearance';
 import { loadAirports } from './data/airports';
 import { startFeed, retryNow } from './data/feed';
 import { toggleFullscreen } from './lib/actions';
@@ -25,11 +28,14 @@ function NavRail() {
   const atcN = useStore((s) => s.controllers.length);
   const myVid = useStore((s) => s.prefs.myVid);
   const plan = useStore((s) => s.plan);
+  const incoming = useStore((s) => s.incoming);
+  const atcOn = useStore((s) => !!s.atcSession);
   const items: { id: PanelId; label: string; icon: React.ReactNode; badge?: string | number; key: string }[] = [
     { id: 'traffic', label: 'Traffic', icon: <IconPlane size={20} />, key: 'T' },
     { id: 'airports', label: 'Airports', icon: <IconRunway size={20} />, key: 'A' },
     { id: 'atc', label: 'ATC', icon: <IconTower size={20} />, badge: atcN || undefined, key: 'S' },
-    { id: 'myflight', label: 'My flight', icon: <IconUser size={20} />, badge: myVid || plan ? '•' : undefined, key: 'P' },
+    { id: 'myflight', label: 'My flight', icon: <IconUser size={20} />, badge: incoming && !incoming.ack ? '1' : myVid || plan ? '•' : undefined, key: 'P' },
+    { id: 'atcdesk', label: 'ATC desk', icon: <IconHeadset size={20} />, badge: atcOn ? '✓' : undefined, key: 'D' },
   ];
   return (
     <nav className="rail glass" aria-label="Views">
@@ -119,7 +125,7 @@ function useShortcuts() {
       const sel = s.selection;
       const f = sel?.kind === 'flight' ? s.flightMap.get(sel.key) : undefined;
       const k = e.key;
-      const panels: Record<string, PanelId> = { t: 'traffic', a: 'airports', s: 'atc', p: 'myflight' };
+      const panels: Record<string, PanelId> = { t: 'traffic', a: 'airports', s: 'atc', p: 'myflight', d: 'atcdesk' };
       if (k === 'Escape') {
         if (s.overlay) s.setOverlay(null);
         else if (s.selection) s.select(null);
@@ -154,6 +160,7 @@ export default function App() {
   const controllers = useStore((s) => s.controllers);
   useShortcuts();
   useShareLinks();
+  usePilotClearance();
 
   useEffect(() => {
     loadAirports()
@@ -211,10 +218,12 @@ export default function App() {
       {panel === 'airports' && <AirportExplorer />}
       {panel === 'atc' && <ATCStations />}
       {panel === 'myflight' && <MyFlight />}
+      {panel === 'atcdesk' && <AtcDesk />}
       {selFlight && <AircraftDetailsPanel key={selFlight.key} flight={selFlight} />}
       {!selFlight && selAtc && <AtcDetailsPanel key={selAtc.key} c={selAtc} />}
       {selFlight && <TelemetryBar f={selFlight} />}
       <MapControls />
+      <ChartChip />
       {overlay === 'layers' && <MapLayerControls />}
       {overlay === 'settings' && <SettingsPanel />}
       {overlay === 'help' && <Shortcuts />}

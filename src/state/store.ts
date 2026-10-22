@@ -2,10 +2,11 @@ import { create } from 'zustand';
 import type { Controller, Counts, FeedStatus, Flight, SimbriefPlan, WakeCat } from '../types';
 import { REGIONS, inBox, type Region } from '../lib/geo';
 import type { TaxiRoute } from '../lib/taxi';
+import { loadAtcSession, type AtcSession, type Clearance } from '../data/atc';
 
 export type MapStyleId = 'dark' | 'standard' | 'satellite' | 'radar';
 export type LabelMode = 'auto' | 'off' | 'callsign' | 'full';
-export type Panel = 'traffic' | 'airports' | 'atc' | 'myflight';
+export type Panel = 'traffic' | 'airports' | 'atc' | 'myflight' | 'atcdesk';
 
 export interface Filters {
   wake: WakeCat[]; // empty = all
@@ -95,6 +96,9 @@ interface State {
   trackInfo: { key: string; points: number; error: string | null; source: 'recorder' | 'ivao' | null } | null;
   taxi: { icao: string; text: string; route: TaxiRoute } | null;
   assignedSquawk: string;
+  chartFocus: string | null;
+  atcSession: AtcSession | null;
+  incoming: Clearance | null;
 
   setPrefs: (p: Partial<Prefs>) => void;
   setFilters: (f: Partial<Filters>) => void;
@@ -136,6 +140,9 @@ export const useStore = create<State>((set, get) => ({
   trackInfo: null,
   taxi: null,
   assignedSquawk: '',
+  chartFocus: null,
+  atcSession: loadAtcSession(),
+  incoming: null,
 
   setPrefs: (p) => {
     const prefs = { ...get().prefs, ...p };

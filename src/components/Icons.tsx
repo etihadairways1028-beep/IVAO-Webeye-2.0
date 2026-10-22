@@ -40,6 +40,14 @@ export const IconShare = (p: P) => (
     <path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6" />
   </Svg>
 );
+export const IconHeadset = (p: P) => (
+  <Svg {...p}>
+    <path d="M4 14v-2a8 8 0 0116 0v2" />
+    <rect x="3" y="13" width="4" height="6" rx="1.5" />
+    <rect x="17" y="13" width="4" height="6" rx="1.5" />
+    <path d="M19 19c0 1.5-2 2.5-5 2.5" />
+  </Svg>
+);
 export const IconSearch = (p: P) => (
   <Svg {...p}>
     <circle cx="11" cy="11" r="6.5" />

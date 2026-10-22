@@ -13,7 +13,7 @@ export const SHORTCUTS: [string, string][] = [
   ['R', 'Toggle radar mode'],
   ['L', 'Cycle label density'],
   ['M', 'Map layers'],
-  ['T · A · S · P', 'Traffic · Airports · ATC (S) · My flight (P)'],
+  ['T · A · S · P · D', 'Traffic · Airports · ATC (S) · My flight (P) · ATC desk (D)'],
   ['Shift + F', 'Fullscreen'],
   ['?', 'Shortcuts'],
 ];

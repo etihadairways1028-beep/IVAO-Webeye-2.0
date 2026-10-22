@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { ackClearance, taxiText } from '../data/atc';
+import { ago } from '../lib/format';
 import { useStore } from '../state/store';
 import { allAirports, getAirport } from '../data/airports';
 import { chartState, loadChart, onChartsChange } from '../data/charts';
@@ -48,6 +50,21 @@ export function ClearanceTools({ flight, planOrigin }: { flight: Flight | null; 
   const names = useMemo(() => (fc ? taxiwayNames(fc) : []), [fc]);
   const rwys = useMemo(() => (fc ? [...new Set(runwayLabels(fc))].sort((a, b) => a.localeCompare(b, 'en', { numeric: true })) : []), [fc]);
 
+  // A clearance from a verified controller fills in the squawk and the taxi route.
+  const incoming = useStore((s) => s.incoming);
+  const applied = useRef(0);
+  const pendingShow = useRef(false);
+  useEffect(() => {
+    if (!incoming || applied.current === incoming.at) return;
+    applied.current = incoming.at;
+    if (incoming.squawk) useStore.setState({ assignedSquawk: incoming.squawk });
+    if (incoming.taxi) {
+      if (incoming.taxi.airport) setIcao(incoming.taxi.airport);
+      setText(taxiText(incoming.taxi));
+      pendingShow.current = true;
+    }
+  }, [incoming]);
+
   const livePos: [number, number] | null = flight && onGround && airportAt(flight) === ap?.icao ? [flight.lon, flight.lat] : null;
 
   const show = (e?: React.FormEvent) => {
@@ -65,6 +82,27 @@ export function ClearanceTools({ flight, planOrigin }: { flight: Flight | null; 
     const lons = r.route.path.map((p) => p[0]), lats = r.route.path.map((p) => p[1]);
     useStore.getState().camera_({ type: 'fit', bounds: [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], maxZoom: 16.5 });
   };
+  useEffect(() => {
+    if (pendingShow.current && fc && text) {
+      pendingShow.current = false;
+      show();
+    }
+  }); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const [ackBusy, setAckBusy] = useState(false);
+  const wilco = async () => {
+    if (!incoming || !flight) return;
+    setAckBusy(true);
+    try {
+      await ackClearance(flight.callsign, incoming.at);
+      useStore.setState({ incoming: { ...incoming, ack: Date.now() } });
+    } catch (e) {
+      useStore.getState().notify((e as Error).message);
+    } finally {
+      setAckBusy(false);
+    }
+  };
+
   const clear = () => {
     useStore.setState({ taxi: null });
     setErr(null);
@@ -87,6 +125,35 @@ export function ClearanceTools({ flight, planOrigin }: { flight: Flight | null; 
 
   return (
     <>
+      {incoming && (
+        <div className={`incoming ${incoming.ack ? 'acked' : ''}`} role="status">
+          <div className="incoming-head">
+            <span className="mono strong">{incoming.from}</span>
+            <span className="dim small">sent {ago(incoming.at)}</span>
+          </div>
+          {incoming.taxi && (
+            <div className="incoming-line">
+              <span className="dim small">Taxi</span>
+              <span className="mono">{taxiText(incoming.taxi)}</span>
+            </div>
+          )}
+          {incoming.squawk && (
+            <div className="incoming-line">
+              <span className="dim small">Squawk</span>
+              <span className="mono strong">{incoming.squawk}</span>
+            </div>
+          )}
+          {incoming.note && <div className="incoming-note">{incoming.note}</div>}
+          {incoming.ack ? (
+            <div className="ok-text small">Wilco sent {ago(incoming.ack)}.</div>
+          ) : (
+            <button className="btn" disabled={ackBusy} onClick={wilco}>
+              {ackBusy ? 'Sending…' : 'Wilco'}
+            </button>
+          )}
+          <div className="fineprint">From a controller verified by WebEye. Read it back on frequency as usual.</div>
+        </div>
+      )}
       <Section title="ATC clearance" icon={<IconRoute size={15} />}>
         <div className="clr-row">
           <label className="clr-field">
@@ -102,7 +169,7 @@ export function ClearanceTools({ flight, planOrigin }: { flight: Flight | null; 
         {sqValid && live && live === sq && <p className="ok-text small">Squawk {sq} is set correctly.</p>}
         {sqValid && live && live !== sq && <p className="warn small">ATC gave you {sq}, but your transponder shows {live}. Set {sq}.</p>}
         {sqValid && !live && <p className="dim small">Your transponder code appears here once you’re connected to IVAO.</p>}
-        <p className="fineprint">IVAO doesn’t publish what controllers tell pilots, so type in your squawk and taxi clearance; WebEye checks and draws them.</p>
+        <p className="fineprint">A controller using WebEye’s ATC desk can send these to you directly. Otherwise, type in what ATC gave you on frequency and WebEye checks and draws it.</p>
       </Section>
 
       <Section title="Taxi" icon={<IconRunway size={15} />} aside={route ? <span className="mono dim">{fmtM(route.lengthM)}</span> : undefined}>

@@ -21,8 +21,15 @@ export const SIMBRIEF_URL = pick('/proxy/simbrief/api/xml.fetcher.php', 'https:/
 export const AWC_URL = pick('/proxy/awc/api/data', 'https://aviationweather.gov/api/data', env.VITE_AWC_URL);
 export const RAINVIEWER_URL = pick('/proxy/rainviewer/public/weather-maps.json', 'https://api.rainviewer.com/public/weather-maps.json', env.VITE_RAINVIEWER_URL);
 /** Optional WebEye track recorder (see recorder/README.md): full tracks from pushback for every flight. */
-export const RECORDER_URL = (env.VITE_RECORDER_URL || 'https://webeye-recorder.etihadairways1028.workers.dev').replace(/\/+$/, '');
+export const RECORDER_URL = (env.VITE_RECORDER_URL || 'https://webeye-recorder.webeyepagesdev.workers.dev').replace(/\/+$/, '');
 export const OVERPASS_URL = pick('/proxy/overpass/api/interpreter', 'https://overpass-api.de/api/interpreter', env.VITE_OVERPASS_URL);
+/**
+ * OpenStreetMap ground-chart servers, tried in order straight from the browser (they allow
+ * cross-origin requests, and each visitor then has their own rate limit), then via the proxy.
+ */
+export const OVERPASS_MIRRORS = env.VITE_OVERPASS_URL
+  ? [env.VITE_OVERPASS_URL]
+  : ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', ...(OVERPASS_URL.startsWith('http') ? [] : [OVERPASS_URL])];
 
 /** Human-readable hint appended to network errors in static deployments. */
 export const CORS_HINT = direct && !proxyBase ? ' — if this persists the provider may block cross-origin requests; see README “Proxy”.' : '';
