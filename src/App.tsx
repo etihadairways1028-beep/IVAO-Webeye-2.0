@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FlightMap, getMapController } from './map/FlightMap';
 import { passesFilters, useStore, type Panel as PanelId } from './state/store';
 import { TopNavigation } from './components/TopNavigation';
@@ -206,6 +206,23 @@ export default function App() {
   const leftOpen = panel != null;
   const rightOpen = !!(selFlight || selAtc);
   const glass = useStore((s) => s.prefs.glass);
+  // Light / dark: follows the device unless chosen in Settings; the basemap follows along.
+  const themePref = useStore((s) => s.prefs.theme);
+  const [sysLight, setSysLight] = useState(() => window.matchMedia('(prefers-color-scheme: light)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: light)');
+    const on = () => setSysLight(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  const theme = themePref === 'system' ? (sysLight ? 'light' : 'dark') : themePref;
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    const s = useStore.getState();
+    if (theme === 'light' && s.prefs.mapStyle === 'dark') s.setPrefs({ mapStyle: 'standard' });
+    if (theme === 'dark' && s.prefs.mapStyle === 'standard') s.setPrefs({ mapStyle: 'dark' });
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#ffffff' : '#0e151c');
+  }, [theme]);
   useEffect(() => {
     document.documentElement.dataset.glass = glass ? '1' : '0';
   }, [glass]);

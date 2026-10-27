@@ -15,6 +15,12 @@ import { firForCallsign, firShapes, loadFirs } from '../data/firs';
 import type { TaxiRoute } from '../lib/taxi';
 
 type FC = GeoJSON.FeatureCollection;
+/** Blend two #rrggbb colours. */
+function mix(a: string, b: string, t: number): string {
+  const p = (h: string, i: number) => parseInt(h.slice(i, i + 2), 16);
+  const c = [1, 3, 5].map((i) => Math.round(p(a, i) + (p(b, i) - p(a, i)) * Math.max(0, Math.min(1, t))));
+  return `#${c.map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+}
 const EMPTY: FC = { type: 'FeatureCollection', features: [] };
 
 export const ATC_COLORS: Record<string, string> = { DEL: '#a78bfa', GND: '#34d399', TWR: '#f87171', APP: '#60a5fa', DEP: '#38bdf8', CTR: '#fbbf24', FSS: '#fbbf24', RMP: '#34d399', OTHER: '#94a3b8' };
@@ -308,6 +314,10 @@ export class MapController {
     m.addLayer({ id: 'route-ref', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'ref'], paint: { 'line-color': dark ? '#ffffff' : '#0f172a', 'line-opacity': 0.22, 'line-width': 1.2, 'line-dasharray': [2, 3] } });
     m.addLayer({ id: 'route-remaining', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'remaining'], layout: { 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLORS.remaining, 'line-opacity': 0.95, 'line-width': 1.6, 'line-dasharray': [1, 2.5] } });
     m.addLayer({ id: 'route-trail', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'trail'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLORS.flown, 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 2.4, 14, 3.5], 'line-opacity': 0.95 } });
+    src('trail', EMPTY, { lineMetrics: true });
+    m.addLayer({ id: 'trail-casing', type: 'line', source: 'trail', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': dark ? 'rgba(3,6,12,0.75)' : 'rgba(255,255,255,0.9)', 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 5, 14, 7] } });
+    m.addLayer({ id: 'trail-line', type: 'line', source: 'trail', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#33b1ff', 'line-gradient': ['interpolate', ['linear'], ['line-progress'], 0, '#f2e94e', 1, '#2f7bff'], 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 2.6, 14, 4] } });
+    this.trailGradientSig = '';
     m.addLayer({ id: 'route-ends', type: 'circle', source: 'route', filter: ['==', ['get', 'kind'], 'end'], paint: { 'circle-radius': 5, 'circle-color': dark ? '#0b1222' : '#fff', 'circle-stroke-color': ROUTE_COLORS.flown, 'circle-stroke-width': 2 } });
     m.addLayer({ id: 'route-end-labels', type: 'symbol', source: 'route', filter: ['==', ['get', 'kind'], 'end'], layout: { 'text-field': ['get', 'icao'], 'text-font': FONT_BOLD, 'text-size': 11.5, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-allow-overlap': true }, paint: { 'text-color': '#ffb3e6', 'text-halo-color': halo, 'text-halo-width': 1.5 } });
 
@@ -358,7 +368,7 @@ export class MapController {
         'icon-text-fit-padding': [2, 5, 2, 5],
         'symbol-sort-key': ['case', ['get', 'sel'], 0, ['get', 'mine'], 1, 2],
       },
-      paint: { 'text-color': textColor },
+      paint: { 'text-color': this.styleId === 'radar' ? '#b6ffd5' : '#e8eef3' }, // boxes are dark on every map style
     });
 
     m.addLayer({ id: 'airport-sel', type: 'circle', source: 'route', filter: ['==', ['get', 'kind'], 'airport'], paint: { 'circle-radius': 14, 'circle-color': 'rgba(125,180,255,0.12)', 'circle-stroke-color': '#7db4ff', 'circle-stroke-width': 1.6 } });
@@ -484,14 +494,46 @@ export class MapController {
    * Flown line for a flight: the recorder/IVAO track (one point a minute from pushback) up to
    * where this browser started recording, then the browser's own 15-second positions.
    */
-  private flownLine(f: Flight): [number, number][] {
+  private flownLine(f: Flight): { pts: [number, number][]; alts: number[] } {
     const local = trails.get(f.key) ?? [];
     const track = this.track && this.track.length > 1 ? this.track : null;
-    if (!track) return local.map((p) => [p[0], p[1]]);
+    const fromLocal = (l: typeof local) => ({ pts: l.map((p) => [p[0], p[1]] as [number, number]), alts: l.map((p) => p[2] ?? 0) });
+    if (!track) return fromLocal(local);
     const firstLocal = local.find((p) => p[3] != null)?.[3];
-    if (firstLocal == null) return track.map((p) => [p.lon, p.lat]);
-    const before = track.filter((p) => p.t && new Date(p.t).getTime() < firstLocal).map((p) => [p.lon, p.lat] as [number, number]);
-    return [...before, ...local.filter((p) => p[3] != null).map((p) => [p[0], p[1]] as [number, number])];
+    const tr = (list: typeof track) => ({ pts: list.map((p) => [p.lon, p.lat] as [number, number]), alts: list.map((p) => (p.onGround ? 0 : p.alt ?? 0)) });
+    if (firstLocal == null) return tr(track);
+    const a = tr(track.filter((p) => p.t && new Date(p.t).getTime() < firstLocal));
+    const b = fromLocal(local.filter((p) => p[3] != null));
+    return { pts: [...a.pts, ...b.pts], alts: [...a.alts, ...b.alts] };
+  }
+
+  /** IVAO-Webeye-style colouring: yellow-green near the ground, cyan, then blue at cruise. */
+  private static TRAIL_RAMP: [number, string][] = [[0, '#f2e94e'], [4000, '#8ee05a'], [12000, '#35d6b4'], [22000, '#33b1ff'], [32000, '#2f7bff'], [40000, '#3a4dff']];
+  private trailGradientSig = '';
+  private trailGradient(pts: [number, number][], alts: number[]): ExpressionSpecification {
+    // Distance fraction of each point along the line, then at most ~48 colour stops.
+    const k = Math.cos(((pts[0]?.[1] ?? 0) * Math.PI) / 180) || 1;
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot((pts[i][0] - pts[i - 1][0]) * k, pts[i][1] - pts[i - 1][1]));
+    const total = cum[cum.length - 1] || 1;
+    const ramp = MapController.TRAIL_RAMP;
+    const colorAt = (alt: number) => {
+      for (let i = ramp.length - 1; i >= 0; i--) if (alt >= ramp[i][0]) return i === ramp.length - 1 ? ramp[i][1] : mix(ramp[i][1], ramp[i + 1][1], (alt - ramp[i][0]) / (ramp[i + 1][0] - ramp[i][0]));
+      return ramp[0][1];
+    };
+    const step = Math.max(1, Math.floor(pts.length / 48));
+    const stops: (number | string)[] = [];
+    let last = -1;
+    for (let i = 0; i < pts.length; i += step) {
+      const fr = Math.min(1, cum[i] / total);
+      if (fr <= last) continue;
+      stops.push(fr, colorAt(alts[i] ?? 0));
+      last = fr;
+    }
+    const end = colorAt(alts[alts.length - 1] ?? 0);
+    if (last < 1) stops.push(1, end);
+    if (stops.length < 4) return ['literal', end] as unknown as ExpressionSpecification;
+    return ['interpolate', ['linear'], ['line-progress'], ...stops] as unknown as ExpressionSpecification;
   }
 
   /** Smoothed copy of a flown line, recomputed only when a new position arrives. */
@@ -608,6 +650,7 @@ export class MapController {
   private pushRoute() {
     if (!this.map.getSource('route')) return;
     const features: GeoJSON.Feature[] = [];
+    let selTrail: FC = EMPTY;
     const f = this.selectedFlight();
     if (f && this.showRoute) {
       const dep = getAirport(f.dep);
@@ -627,8 +670,19 @@ export class MapController {
         }
       }
       // Flown track: full IVAO session history (from the gate) when available, else what this browser observed.
-      const src = this.flownLine(f);
-      if (src.length > 1 || (src.length === 1 && !f.onGround)) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: unwrap([...this.smoothed(f.key, src), [lon, lat]]) }, properties: { kind: 'trail' } });
+      const flown = this.flownLine(f);
+      const src = flown.pts;
+      if (src.length > 1 || (src.length === 1 && !f.onGround)) {
+        // Selected flight: its own line source so it can be coloured by altitude along its length.
+        const coords = unwrap([...this.smoothed(f.key, src), [lon, lat]]);
+        const alts = [...flown.alts, f.onGround ? 0 : f.altitude ?? 0];
+        selTrail = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: {} }] };
+        const sig = `${f.key}:${src.length}:${alts[alts.length - 1]}`;
+        if (sig !== this.trailGradientSig && this.map.getLayer('trail-line')) {
+          this.trailGradientSig = sig;
+          this.map.setPaintProperty('trail-line', 'line-gradient', this.trailGradient(unwrap([...src, [lon, lat]]), alts));
+        }
+      }
       // Before the recorded part: an estimated path from the departure airport, drawn dashed.
       const first = src[0] ?? [lon, lat];
       const fullTrack = this.track && this.track.length > 1;
@@ -658,6 +712,7 @@ export class MapController {
       if (a) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [a.lon, a.lat] }, properties: { kind: 'airport' } });
     }
     this.set('route', { type: 'FeatureCollection', features });
+    this.set('trail', selTrail);
   }
 
   private pushPlan() {

@@ -4,8 +4,8 @@ import { getAirport } from '../data/airports';
 import { selectAirport } from '../lib/actions';
 import { ago, dash, fmtAlt, fmtDuration, fmtHdg, fmtKt, fmtLat, fmtLon, fmtNm, fmtVs, fmtZulu, RULES_LABEL, WAKE_LABEL } from '../lib/format';
 import { distanceNm } from '../lib/geo';
-import { Badge, KV, Panel, Section } from './ui';
-import { IconClock, IconCrosshair, IconFollow, IconGauge, IconPlane, IconRoute, IconShare, IconUser } from './Icons';
+import { Badge, KV, Panel } from './ui';
+import { IconClock, IconCrosshair, IconFollow, IconPlane, IconRoute, IconShare } from './Icons';
 import { shareSelection } from '../lib/share';
 import type { Flight } from '../types';
 import { flightProgress, type Progress } from '../lib/progress';
@@ -64,6 +64,13 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
   const pr = flightProgress(f, plan);
   const mine = myVid && Number(myVid) === f.vid;
   const planMatch = plan && plan.callsign.toUpperCase() === f.callsign;
+  const trend = f.verticalSpeed == null || Math.abs(f.verticalSpeed) < 300 ? '' : f.verticalSpeed > 0 ? 'up' : 'down';
+  const trackOk = !!trackInfo && trackInfo.points > 1;
+  const trackTitle = !trackInfo
+    ? 'Loading the flown track…'
+    : trackOk
+      ? `${trackInfo.points} positions from ${trackInfo.source === 'recorder' ? 'the WebEye recorder, one a minute from pushback' : 'IVAO'}, joined to what this browser has seen.`
+      : `The full track isn't available: ${trackInfo.note ?? trackInfo.error ?? 'no history yet'}. The line shows what this browser has seen since you opened it, with a dashed estimate back to the departure airport.`;
 
   return (
     <Panel
@@ -102,58 +109,83 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
         </>
       }
     >
-      <div className="badges">
-        {f.state && <Badge tone="blue" title="Flight state reported by IVAO">{f.state}</Badge>}
-        {f.onGround && <Badge>On ground</Badge>}
-        {f.rules && <Badge>{RULES_LABEL[f.rules] ?? f.rules}</Badge>}
-        {f.wake !== '?' && <Badge title="Wake turbulence category">{WAKE_LABEL[f.wake]}</Badge>}
-        {f.military && <Badge tone="amber">Military</Badge>}
-        {f.transponder && <Badge title="Transponder code">SQK {f.transponder}</Badge>}
-      </div>
-
       <RouteStrip f={f} pr={pr} />
 
-      <Section title="Live telemetry" icon={<IconGauge size={15} />} aside={<span className="mono dim">{f.trackTime ? `${fmtZulu(f.trackTime, true)} · ${ago(f.trackTime)}` : fetchedAt ? ago(fetchedAt) : dash}</span>}>
-        <div className="grid-kv big">
-          <KV k="Altitude" v={f.onGround ? 'GND' : fmtAlt(f.altitude, transition)} />
-          <KV k="Groundspeed" v={fmtKt(f.groundSpeed)} />
-          <KV k="Track" v={fmtHdg(f.heading)} note="Heading as reported by the IVAO feed" />
-          <KV k="Vertical speed" v={fmtVs(f.verticalSpeed)} note="Derived from consecutive position reports — not reported by IVAO" />
-          <KV k="Latitude" v={fmtLat(f.lat)} />
-          <KV k="Longitude" v={fmtLon(f.lon)} />
+      {/* The essentials, readable at a glance */}
+      <div className="essentials">
+        <div className="ess">
+          <span className="ess-k">Altitude</span>
+          <span className={`ess-v mono ${trend}`}>{f.onGround ? 'GND' : fmtAlt(f.altitude, transition)}</span>
         </div>
-      </Section>
+        <div className="ess">
+          <span className="ess-k">Speed</span>
+          <span className="ess-v mono">{fmtKt(f.groundSpeed)}</span>
+        </div>
+        <div className="ess">
+          <span className="ess-k">Heading</span>
+          <span className="ess-v mono">{fmtHdg(f.heading)}</span>
+        </div>
+        <div className="ess">
+          <span className="ess-k">Vertical</span>
+          <span className={`ess-v mono ${trend}`}>{fmtVs(f.verticalSpeed)}</span>
+        </div>
+      </div>
+      <div className="ess-meta">
+        {f.state && <Badge tone="blue" title="Flight state reported by IVAO">{f.state}</Badge>}
+        {f.transponder && <Badge title="Transponder code">SQK {f.transponder}</Badge>}
+        <span className="dim small mono">{f.trackTime ? ago(f.trackTime) : fetchedAt ? ago(fetchedAt) : ''}</span>
+      </div>
 
-      <Section title="Route" icon={<IconRoute size={15} />}>
+      <div className={`track-chip ${trackOk ? 'ok' : trackInfo ? 'warn' : ''}`} title={trackTitle}>
+        <span className="lg lg-trail" />
+        {!trackInfo ? 'Loading flown track…' : trackOk ? (trackInfo.source === 'recorder' ? 'Flown track from pushback' : 'Flown track from the gate') : 'Flown track: only since you opened the page'}
+        <span className="dim small">colour = altitude</span>
+      </div>
+
+      <details className="fold">
+        <summary>Flight details</summary>
         <div className="grid-kv">
           <KV optional k="Cruise" v={f.cruiseLevel ?? dash} />
           <KV optional k="Cruise speed" v={f.cruiseSpeed ?? dash} />
           <KV k="Remaining" v={fmtNm(pr.remainingNm)} note={pr.source === 'plan' ? 'Along your SimBrief route' : 'Distance to arrival as reported by IVAO'} />
           <KV k="Flown" v={fmtNm(pr.flownNm)} note={pr.source === 'plan' ? 'Along your SimBrief route' : 'Distance from departure as reported by IVAO'} />
-          <KV optional k="Filed EET" v={fmtDuration(f.eet)} />
           <KV k="Est. arrival" v={pr.eta ? fmtZulu(pr.eta) : dash} note="Estimated from remaining distance at current groundspeed — not authoritative" />
+          <KV optional k="Filed EET" v={fmtDuration(f.eet)} />
           <KV optional k="Alternate" v={f.alt ?? dash} />
           <KV optional k="POB" v={f.pob ?? dash} />
+          <KV optional k="Rules" v={f.rules ? RULES_LABEL[f.rules] ?? f.rules : dash} mono={false} />
+          <KV optional k="Wake" v={f.wake !== '?' ? WAKE_LABEL[f.wake] : dash} mono={false} />
+          <KV k="Position" v={`${fmtLat(f.lat)} ${fmtLon(f.lon)}`} wide />
         </div>
         {f.route && (
           <div className="route-text mono" aria-label="Filed route">
             {f.route}
           </div>
         )}
-        <div className={`track-status ${trackInfo && trackInfo.points > 1 ? 'ok' : trackInfo ? 'warn' : ''}`}>
-          {!trackInfo
-            ? 'Loading the full track…'
-            : trackInfo.points > 1
-              ? `Full track: ${trackInfo.points} positions from ${trackInfo.source === 'recorder' ? 'the WebEye recorder (one a minute, from pushback)' : 'IVAO'}.`
-              : `Full track not available: ${trackInfo.note ?? trackInfo.error ?? 'no history yet'}. Showing what this browser has seen since you opened it, plus a dashed estimate from the departure airport.`}
+        {f.remarks && (
+          <details className="remarks">
+            <summary>Remarks</summary>
+            <div className="mono">{f.remarks}</div>
+          </details>
+        )}
+      </details>
+
+      <details className="fold">
+        <summary>Pilot</summary>
+        <div className="grid-kv">
+          <KV k="IVAO VID" v={f.demo ? `${f.vid} (demo)` : f.vid} />
+          <KV k="Online" v={f.connectedAt ? fmtDuration((Date.now() - new Date(f.connectedAt).getTime()) / 1000) : dash} />
+          <KV optional k="Server" v={f.server ?? dash} />
+          <KV optional k="Simulator" v={f.simulator ?? dash} />
+          <KV optional k="Software" v={f.software ?? dash} wide />
         </div>
+      </details>
+
+      <details className="fold">
+        <summary>Map key</summary>
         <div className="legend-row">
-          <span className="lg lg-trail" /> {trackInfo && trackInfo.points > 1 ? (trackInfo.source === 'recorder' ? 'Flown track from pushback' : 'Flown track from gate (IVAO)') : 'Flown (recorded by this browser)'}
-          {!(trackInfo && trackInfo.points > 1) && (
-            <>
-              <span className="lg lg-est" /> Estimated from departure
-            </>
-          )}
+          <span className="lg lg-trail" /> Flown (colour = altitude)
+          <span className="lg lg-est" /> Estimated from departure
           <span className="lg lg-rem" /> Remaining{planMatch ? '' : ' (great circle)'}
           {planMatch ? (
             <>
@@ -165,27 +197,8 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
             </>
           )}
         </div>
-        <p className="fineprint">
-          {planMatch ? 'Purple = your SimBrief route; distances and ETA follow it.' : 'The filed route is shown as text; plotted lines are a great-circle reference. Import this flight’s SimBrief OFP under My flight to draw the exact route.'}
-
-        </p>
-      </Section>
-
-      <Section title="Pilot" icon={<IconUser size={15} />}>
-        <div className="grid-kv">
-          <KV k="IVAO VID" v={f.demo ? `${f.vid} (demo)` : f.vid} />
-          <KV k="Online" v={f.connectedAt ? fmtDuration((Date.now() - new Date(f.connectedAt).getTime()) / 1000) : dash} />
-          <KV optional k="Server" v={f.server ?? dash} />
-          <KV optional k="Simulator" v={f.simulator ?? dash} />
-          <KV optional k="Software" v={f.software ?? dash} wide />
-        </div>
-        {f.remarks && (
-          <details className="remarks">
-            <summary>Remarks</summary>
-            <div className="mono">{f.remarks}</div>
-          </details>
-        )}
-      </Section>
+        <p className="fineprint">{trackTitle}</p>
+      </details>
       <div className="panel-foot mono">
         <IconClock size={13} /> Source: {f.demo ? 'demonstration generator' : 'IVAO Whazzup'}
       </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../state/store';
-import { IconExpand, IconImport, IconInfo, IconLayers, IconLogo, IconRadar, IconSearch, IconSettings, IconShrink } from './Icons';
+import { IconExpand, IconImport, IconInfo, IconLayers, IconLogo, IconMoon, IconRadar, IconSearch, IconSettings, IconShrink, IconSun } from './Icons';
 import { useInstall } from '../lib/install';
 import { FlightSearch } from './FlightSearch';
 import { toggleFullscreen } from '../lib/actions';
@@ -55,6 +55,8 @@ export function TopNavigation({ visibleCount }: { visibleCount: number }) {
   const overlay = useStore((s) => s.overlay);
   const setOverlay = useStore((s) => s.setOverlay);
   const inst = useInstall();
+  const themePref = useStore((s) => s.prefs.theme);
+  const isLight = themePref === 'light' || (themePref === 'system' && typeof window !== 'undefined' && document.documentElement.dataset.theme === 'light');
   const mapStyle = useStore((s) => s.prefs.mapStyle);
   const lastStyle = useStore((s) => s.prefs.lastNonRadarStyle);
   const setPrefs = useStore((s) => s.setPrefs);
@@ -110,6 +112,9 @@ export function TopNavigation({ visibleCount }: { visibleCount: number }) {
             <IconImport />
           </button>
         )}
+        <button className="icon-btn" aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'} title={isLight ? 'Dark mode' : 'Light mode'} onClick={() => setPrefs({ theme: isLight ? 'dark' : 'light' })}>
+          {isLight ? <IconMoon /> : <IconSun />}
+        </button>
         <button className={`icon-btn ${overlay === 'about' ? 'on' : ''}`} aria-label="About IVAO WebEye" title="About" aria-expanded={overlay === 'about'} onClick={() => setOverlay(overlay === 'about' ? null : 'about')}>
           <IconInfo />
         </button>

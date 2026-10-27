@@ -23,6 +23,7 @@ export interface Prefs {
   labels: LabelMode;
   globe: boolean;
   glass: boolean;
+  theme: 'system' | 'dark' | 'light';
   colorBy: 'uniform' | 'altitude';
   layers: { airports: boolean; atc: boolean; weather: boolean; trails: boolean; borders: boolean; firs: boolean };
   pollSec: 15 | 30 | 60;
@@ -41,6 +42,7 @@ const DEFAULT_PREFS: Prefs = {
   labels: 'auto',
   globe: false,
   glass: true,
+  theme: 'system',
   colorBy: 'uniform',
   layers: { airports: true, atc: true, weather: false, trails: true, borders: true, firs: true },
   pollSec: 15,
