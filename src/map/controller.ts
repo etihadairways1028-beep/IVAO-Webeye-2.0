@@ -5,7 +5,7 @@ import { addAircraftIcons } from './icons';
 import { FONT_BOLD, FONT_REG, offlineStyle, styleFor, tintDark } from './styles';
 import { allAirports, getAirport } from '../data/airports';
 import { trails } from '../data/feed';
-import { circle, destination, distanceNm, greatCircle, smoothPath, unwrap } from '../lib/geo';
+import { bearing, circle, destination, distanceNm, greatCircle, smoothPath, unwrap } from '../lib/geo';
 import { fmtAltShort } from '../lib/format';
 import type { RadarFrame } from '../data/weather';
 import type { TrackPoint } from '../data/ivao';
@@ -35,6 +35,7 @@ export interface MapCallbacks {
   onView: (b: [number, number, number, number], zoom: number) => void;
   onStyleFallback: (msg: string) => void;
   onUserMove: () => void;
+  onMeasure?: (p: { lon: number; lat: number; label: string }) => void;
 }
 
 export class MapController {
@@ -64,6 +65,7 @@ export class MapController {
 
   constructor(container: HTMLElement, prefs: Prefs, cb: MapCallbacks) {
     this.prefs = prefs;
+    this.friendSet = new Set((prefs.friends ?? []).map((f) => f.vid));
     this.styleId = prefs.mapStyle;
     this.cb = cb;
     this.map = new maplibregl.Map({
@@ -152,7 +154,7 @@ export class MapController {
       this.prefs.colorBy === 'altitude'
         ? (['interpolate', ['linear'], ['get', 'alt'], ...ALT_RAMP.flat()] as unknown as ExpressionSpecification)
         : (['case', ['get', 'gnd'], this.styleId === 'standard' ? '#64748b' : '#7d8aa5', this.baseColor()] as ExpressionSpecification);
-    return ['case', ['get', 'sel'], '#ff4fc3', ['get', 'mine'], '#2fd6b5', base];
+    return ['case', ['get', 'sel'], '#ff4fc3', ['get', 'mine'], '#2fd6b5', ['get', 'friend'], '#b794ff', base];
   }
 
   /**
@@ -168,7 +170,7 @@ export class MapController {
     const block = ['format', ['get', 'cs'], { 'text-color': csCol }, '\n', {}, ['get', 'fl'], { 'text-color': flCol, 'font-scale': 0.95 }, '  ', {}, ['get', 'gs'], { 'text-color': sub, 'font-scale': 0.95 }];
     const block3 = [...block, '\n', {}, ['get', 'info'], { 'text-color': radar ? '#7fcfa5' : '#93a3c0', 'font-scale': 0.85 }];
     const none = ['literal', ''];
-    const pick = (normal: unknown) => ['case', ['any', ['get', 'sel'], ['get', 'mine']], block3, normal];
+    const pick = (normal: unknown) => ['case', ['any', ['get', 'sel'], ['get', 'mine'], ['get', 'friend']], block3, normal];
     let e: unknown;
     if (mode === 'off') e = pick(none);
     else if (mode === 'callsign') e = pick(cs);
@@ -347,6 +349,13 @@ export class MapController {
     m.addLayer({ id: 'conflict-ring', type: 'circle', source: 'conflicts', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 9, 10, 16], 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-width': 2.5, 'circle-stroke-color': ['case', ['==', ['get', 'level'], 'now'], '#ff4d4d', '#ffb547'] } });
     m.addLayer({ id: 'conflict-label', type: 'symbol', source: 'conflict-labels', minzoom: 7, layout: { 'text-offset': [0, -1], 'text-field': ['get', 'label'], 'text-font': FONT_BOLD, 'text-size': 11, 'text-allow-overlap': true }, paint: { 'text-color': ['case', ['==', ['get', 'level'], 'now'], '#ffb3b3', '#ffd89a'], 'text-halo-color': 'rgba(0,0,0,0.85)', 'text-halo-width': 1.6 } });
 
+    // Distance tool
+    src('measure');
+    m.addLayer({ id: 'measure-line', type: 'line', source: 'measure', filter: ['==', ['get', 'kind'], 'seg'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ffd45e', 'line-width': 2.2, 'line-dasharray': [2, 1.5] } });
+    m.addLayer({ id: 'measure-pts', type: 'circle', source: 'measure', filter: ['==', ['get', 'kind'], 'pt'], paint: { 'circle-radius': 5, 'circle-color': '#ffd45e', 'circle-stroke-color': dark ? '#0b1222' : '#fff', 'circle-stroke-width': 2 } });
+    src('measure-labels');
+    m.addLayer({ id: 'measure-label', type: 'symbol', source: 'measure-labels', layout: { 'text-field': ['get', 'label'], 'text-font': FONT_BOLD, 'text-size': 12, 'text-allow-overlap': true, 'text-offset': [0, -1] }, paint: { 'text-color': '#ffe9a8', 'text-halo-color': 'rgba(0,0,0,0.85)', 'text-halo-width': 1.8 } });
+
     // A past flight picked in the logbook.
     src('logroute', EMPTY, { lineMetrics: true });
     m.addLayer({ id: 'log-casing', type: 'line', source: 'logroute', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': dark ? 'rgba(3,6,12,0.75)' : 'rgba(255,255,255,0.9)', 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 5, 14, 7] } });
@@ -358,7 +367,7 @@ export class MapController {
 
     // Short fading tails behind every aircraft: shows where each one has just been.
     src('tails');
-    m.addLayer({ id: 'tails', type: 'line', source: 'tails', minzoom: 3.5, layout: { visibility: this.styleId !== 'radar' && this.prefs.layers.trails ? 'visible' : 'none', 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['case', ['get', 'mine'], '#2fd6b5', dark ? '#8fb3ea' : '#475569'], 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1, 9, 2], 'line-opacity': 0.5 } });
+    m.addLayer({ id: 'tails', type: 'line', source: 'tails', minzoom: 3.5, layout: { visibility: this.styleId !== 'radar' && this.prefs.layers.trails ? 'visible' : 'none', 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['case', ['get', 'mine'], '#2fd6b5', dark ? '#8fb3ea' : '#475569'], 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1.4, 9, 2.4], 'line-opacity': 0.6 } });
 
     src('history');
     m.addLayer({ id: 'history', type: 'circle', source: 'history', layout: { visibility: this.styleId === 'radar' && this.prefs.layers.trails ? 'visible' : 'none' }, paint: { 'circle-radius': 1.4, 'circle-color': '#7cf2b4', 'circle-opacity': ['get', 'o'] } });
@@ -405,6 +414,8 @@ export class MapController {
       },
       paint: { 'text-color': this.styleId === 'radar' ? '#b6ffd5' : '#e8eef3' }, // boxes are dark on every map style
     });
+    // Station badges are placed before aircraft labels, so data blocks move out of their way.
+    if (m.getLayer('atc-labels')) m.moveLayer('atc-labels');
 
     m.addLayer({ id: 'airport-sel', type: 'circle', source: 'route', filter: ['==', ['get', 'kind'], 'airport'], paint: { 'circle-radius': 14, 'circle-color': 'rgba(125,180,255,0.12)', 'circle-stroke-color': '#7db4ff', 'circle-stroke-width': 1.6 } });
 
@@ -418,6 +429,7 @@ export class MapController {
     this.pushTaxi();
     this.pushLogRoute();
     this.pushConflicts();
+    this.pushMeasure();
   }
 
   private conflicts: { a: string; b: string; pa: [number, number]; pb: [number, number]; level: string; hNm: number; vFt: number; inSec: number }[] = [];
@@ -582,6 +594,7 @@ export class MapController {
         gnd: f.onGround,
         sel: f.key === sel,
         mine: this.myVid != null && f.vid === this.myVid,
+        friend: this.friendSet.has(f.vid),
       },
     }));
     this.set('aircraft', { type: 'FeatureCollection', features });
@@ -903,9 +916,41 @@ export class MapController {
     if (frame && this.prefs.layers.weather) this.addWeather();
   }
 
+  private friendSet = new Set<number>();
+  private measuring = false;
+  private measurePts: { lon: number; lat: number; label: string }[] = [];
+  /** Distance tool: null turns it off. */
+  setMeasure(pts: { lon: number; lat: number; label: string }[] | null) {
+    this.measuring = pts != null;
+    this.measurePts = pts ?? [];
+    this.map.getCanvas().style.cursor = this.measuring ? 'crosshair' : '';
+    this.pushMeasure();
+  }
+  private pushMeasure() {
+    const pts = this.measurePts;
+    const shapes: GeoJSON.Feature[] = [];
+    const labels: GeoJSON.Feature[] = [];
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i];
+      shapes.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { kind: 'pt' } });
+      if (i === 0) continue;
+      const a = pts[i - 1];
+      const line = greatCircle(a.lat, a.lon, p.lat, p.lon, 48);
+      const nm = distanceNm(a.lat, a.lon, p.lat, p.lon);
+      const brg = Math.round(bearing(a.lat, a.lon, p.lat, p.lon)) % 360;
+      shapes.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: line }, properties: { kind: 'seg' } });
+      labels.push({ type: 'Feature', geometry: { type: 'Point', coordinates: line[Math.floor(line.length / 2)] }, properties: { label: `${nm < 10 ? nm.toFixed(1) : Math.round(nm)} NM · ${String(brg || 360).padStart(3, '0')}°` } });
+    }
+    this.set('measure', { type: 'FeatureCollection', features: shapes } as FC);
+    this.set('measure-labels', { type: 'FeatureCollection', features: labels } as FC);
+  }
   setPrefs(p: Prefs) {
     const prev = this.prefs;
     this.prefs = p;
+    if (prev.friends !== p.friends) {
+      this.friendSet = new Set(p.friends.map((f) => f.vid));
+      this.pushAircraft();
+    }
     if (p.mapStyle !== this.styleId) {
       this.setStyle(p.mapStyle);
       return; // style.load reinstalls everything with the new prefs
@@ -988,6 +1033,14 @@ export class MapController {
       const layers = clickable.filter((l) => m.getLayer(l));
       const box: [maplibregl.PointLike, maplibregl.PointLike] = [[e.point.x - 8, e.point.y - 8], [e.point.x + 8, e.point.y + 8]];
       const hits = m.queryRenderedFeatures(box, { layers });
+      if (this.measuring) {
+        // Measuring: snap to an aircraft or airport under the cursor, otherwise use the click point.
+        const snap = hits.find((h) => h.layer.id === 'aircraft' || h.layer.id === 'airports');
+        const c = snap && snap.geometry.type === 'Point' ? (snap.geometry.coordinates as [number, number]) : ([e.lngLat.lng, e.lngLat.lat] as [number, number]);
+        const label = snap ? String(snap.properties.cs ?? snap.properties.icao ?? '') : '';
+        this.cb.onMeasure?.({ lon: c[0], lat: c[1], label });
+        return;
+      }
       const ac = hits.find((h) => h.layer.id === 'aircraft');
       if (ac) return this.cb.onSelect({ kind: 'flight', key: String(ac.properties.key) });
       const atc = hits.find((h) => h.layer.id === 'atc');

@@ -1,6 +1,6 @@
 import { useStore } from '../state/store';
 import { getMapController } from '../map/FlightMap';
-import { IconCrosshair, IconFollow, IconGlobe, IconMinus, IconPlus } from './Icons';
+import { IconCrosshair, IconFollow, IconGlobe, IconMinus, IconPlus, IconRuler } from './Icons';
 
 export function MapControls() {
   const selection = useStore((s) => s.selection);
@@ -8,6 +8,7 @@ export function MapControls() {
   const flightMap = useStore((s) => s.flightMap);
   const st = useStore.getState();
   const globe = useStore((s) => s.prefs.globe);
+  const measuring = useStore((s) => s.measure != null);
   const f = selection?.kind === 'flight' ? flightMap.get(selection.key) : undefined;
   return (
     <div className="mapctl" role="toolbar" aria-label="Map controls">
@@ -30,6 +31,9 @@ export function MapControls() {
         </button>
         <button aria-label="Centre on selected aircraft" title="Centre on aircraft (C)" disabled={!f} onClick={() => f && st.camera_({ type: 'fly', center: [f.lon, f.lat] })}>
           <IconCrosshair size={17} />
+        </button>
+        <button aria-label="Measure distance" aria-pressed={measuring} className={measuring ? 'on' : ''} title="Measure distance and bearing (X)" onClick={() => useStore.setState({ measure: measuring ? null : [] })}>
+          <IconRuler size={17} />
         </button>
         <button aria-label="Follow selected aircraft" aria-pressed={follow} className={follow ? 'on' : ''} title="Follow aircraft (F)" disabled={!f} onClick={() => st.setFollow(!follow)}>
           <IconFollow size={17} />

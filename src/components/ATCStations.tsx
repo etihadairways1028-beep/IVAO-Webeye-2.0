@@ -1,3 +1,4 @@
+import { FriendStar } from './Friends';
 import { firForCallsign } from '../data/firs';
 import { shareSelection } from '../lib/share';
 import { useMemo, useState } from 'react';
@@ -102,6 +103,7 @@ export function AtcDetailsPanel({ c }: { c: Controller }) {
       onClose={() => st.select(null)}
       actions={
         <>
+          {!c.demo && <FriendStar vid={c.vid} name={c.callsign} />}
           {(c.lat != null || fir) && (
             <button className="chip-btn" onClick={() => selectController(c)}>
               <IconCrosshair size={15} /> Locate

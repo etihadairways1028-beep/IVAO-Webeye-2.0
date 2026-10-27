@@ -8,6 +8,7 @@ import { Badge, KV, Panel } from './ui';
 import { IconClock, IconCrosshair, IconFollow, IconPlane, IconRoute, IconShare } from './Icons';
 import { shareSelection } from '../lib/share';
 import { openProfile } from './Logbook';
+import { FriendStar } from './Friends';
 import { IconUser } from './Icons';
 import type { Flight } from '../types';
 import { flightProgress, type Progress } from '../lib/progress';
@@ -105,6 +106,7 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
           <button className={`chip-btn ${showRoute ? 'on' : ''}`} aria-pressed={showRoute} onClick={() => st.setShowRoute(!showRoute)} title="Show route">
             <IconRoute size={15} /> Route
           </button>
+          {!f.demo && <FriendStar vid={f.vid} name={f.callsign} />}
           <button className="chip-btn" onClick={() => shareSelection(`${f.callsign} on IVAO WebEye`, { kind: 'flight', key: f.key })} title="Copy a link to this flight">
             <IconShare size={15} /> Share
           </button>

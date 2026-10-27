@@ -1,4 +1,7 @@
 import { Columns } from './charts';
+import { BoardTable, openBoard, useBoards } from './Board';
+import type { BoardRow } from '../lib/board';
+import { IconBoard } from './Icons';
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../state/store';
 import { getAirport, getRunways, searchAirports, surfaceLabel } from '../data/airports';
@@ -122,18 +125,8 @@ function AirportDetail({ a }: { a: Airport }) {
     };
   }, [a.icao]);
 
-  const { dep, arr, near } = useMemo(() => {
-    const dep: Flight[] = [];
-    const arr: Flight[] = [];
-    const near: Flight[] = [];
-    for (const f of flights) {
-      if (f.dep === a.icao && (f.onGround || (f.departureDistance ?? 999) < 200)) dep.push(f);
-      if (f.arr === a.icao) arr.push(f);
-      if (distanceNm(f.lat, f.lon, a.lat, a.lon) < 30 && (f.altitude ?? 0) < 15000 + (a.elevation ?? 0)) near.push(f);
-    }
-    arr.sort((x, y) => (x.arrivalDistance ?? 9e9) - (y.arrivalDistance ?? 9e9));
-    return { dep, arr, near };
-  }, [flights, a]);
+  const near = useMemo(() => flights.filter((f) => distanceNm(f.lat, f.lon, a.lat, a.lon) < 30 && (f.altitude ?? 0) < 15000 + (a.elevation ?? 0)), [flights, a]);
+  const boards = useBoards(a);
   const atc = useMemo(() => controllers.filter((c) => c.airport === a.icao || c.callsign.startsWith(a.icao + '_')), [controllers, a.icao]);
 
   return (
@@ -149,13 +142,13 @@ function AirportDetail({ a }: { a: Airport }) {
       <div className="grid-kv">
         <KV k="Elevation" v={a.elevation != null ? `${a.elevation.toLocaleString('en-US')} ft` : dash} />
         <KV k="Position" v={`${a.lat.toFixed(3)}, ${a.lon.toFixed(3)}`} />
-        <KV k="Departures" v={dep.length} />
-        <KV k="Arrivals" v={arr.length} />
+        <KV k="Departures" v={boards.dep.length} />
+        <KV k="Arrivals" v={boards.arr.length} />
       </div>
 
       <ChartCard a={a} />
 
-      <ArrivalsOutlook arr={arr} icao={a.icao} />
+      <ArrivalsOutlook rows={boards.arr} icao={a.icao} />
 
       <Section title="Online ATC" icon={<IconTower size={15} />}>
         {atc.length ? (
@@ -169,12 +162,12 @@ function AirportDetail({ a }: { a: Airport }) {
         )}
       </Section>
 
-      <Section title="Traffic" icon={<IconPlane size={15} />}>
+      <Section title="Traffic" icon={<IconPlane size={15} />} aside={<button className="chip-btn small" onClick={() => openBoard(a.icao)} title="Full-screen departures and arrivals board"><IconBoard size={14} /> Board</button>}>
         <div className="tabs small" role="tablist">
           {(
             [
-              ['dep', `Departures`, dep.length],
-              ['arr', `Arrivals`, arr.length],
+              ['dep', `Departures`, boards.dep.length],
+              ['arr', `Arrivals`, boards.arr.length],
               ['near', `Nearby`, near.length],
             ] as const
           ).map(([id, label, n]) => (
@@ -183,8 +176,8 @@ function AirportDetail({ a }: { a: Airport }) {
             </button>
           ))}
         </div>
-        {tab === 'dep' && <FlightRows list={dep} field="dep" empty="No departures filed from here right now." />}
-        {tab === 'arr' && <FlightRows list={arr} field="arr" empty="No inbound flights right now." />}
+        {tab === 'dep' && <BoardTable rows={boards.dep} kind="dep" />}
+        {tab === 'arr' && <BoardTable rows={boards.arr} kind="arr" />}
         {tab === 'near' && <FlightRows list={near} field="near" empty="No aircraft within 30 nm below FL150." />}
       </Section>
 
@@ -325,13 +318,13 @@ export function AirportExplorer() {
 }
 
 /** Inbound flights by estimated arrival time, in 15-minute slots over the next two hours. */
-function ArrivalsOutlook({ arr, icao }: { arr: Flight[]; icao: string }) {
+function ArrivalsOutlook({ rows, icao }: { rows: BoardRow[]; icao: string }) {
   const slots = Array.from({ length: 8 }, (_, i) => ({ x: `+${i * 15}`, v: 0, cs: [] as string[] }));
-  for (const f of arr) {
-    if (f.onGround || f.arrivalDistance == null || !f.groundSpeed || f.groundSpeed < 60) continue;
-    const min = (f.arrivalDistance / f.groundSpeed) * 60;
-    const i = Math.floor(min / 15);
-    if (i >= 0 && i < slots.length) slots[i].v++, slots[i].cs.push(f.callsign);
+  const now = Date.now();
+  for (const r of rows) {
+    if (r.time == null || r.timeKind !== 'ETA') continue;
+    const i = Math.floor((r.time - now) / 60000 / 15);
+    if (i >= 0 && i < slots.length) slots[i].v++, slots[i].cs.push(r.f.callsign);
   }
   const total = slots.reduce((a, b) => a + b.v, 0);
   if (!total) return null;

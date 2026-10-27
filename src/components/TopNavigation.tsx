@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../state/store';
+import { IconReplay } from './Icons';
+import { enterReplay, exitReplay } from '../data/replay';
 import { IconExpand, IconImport, IconInfo, IconLayers, IconLogo, IconMoon, IconRadar, IconSearch, IconSettings, IconShrink, IconSun } from './Icons';
 import { useInstall } from '../lib/install';
 import { FlightSearch } from './FlightSearch';
@@ -15,7 +17,7 @@ function useNow(ms = 1000) {
   return now;
 }
 
-const STATUS_TEXT = { idle: 'Idle', connecting: 'Connecting', live: 'Live', stale: 'Delayed', error: 'Offline', demo: 'Demo data' } as const;
+const STATUS_TEXT = { idle: 'Idle', connecting: 'Connecting', live: 'Live', stale: 'Delayed', error: 'Offline', demo: 'Demo data', replay: 'Replay' } as const;
 
 export function StatusPill() {
   const status = useStore((s) => s.status);
@@ -34,7 +36,7 @@ export function StatusPill() {
     <div className={`status status-${status}`} title={title} role="status" aria-live="polite">
       <span className="status-dot" aria-hidden="true" />
       <span className="status-label">{STATUS_TEXT[status]}</span>
-      {updated && status !== 'demo' && <span className="status-age mono">{ago(updated, now)}</span>}
+      {updated && status !== 'demo' && status !== 'replay' && <span className="status-age mono">{ago(updated, now)}</span>}
     </div>
   );
 }
@@ -68,7 +70,8 @@ export function TopNavigation({ visibleCount }: { visibleCount: number }) {
     document.addEventListener('fullscreenchange', h);
     return () => document.removeEventListener('fullscreenchange', h);
   }, []);
-  const hasData = status === 'live' || status === 'stale' || status === 'demo';
+  const hasData = status === 'live' || status === 'stale' || status === 'demo' || status === 'replay';
+  const replay = useStore((s) => !!s.replay);
   const demo = status === 'demo';
 
   return (
@@ -78,7 +81,7 @@ export function TopNavigation({ visibleCount }: { visibleCount: number }) {
       </div>
       <div className="brand-text">
           <span className="brand-name">
-            IVAO WebEye<span className="brand-ver">2.1</span>
+            IVAO WebEye<span className="brand-ver">3.0</span>
           </span>
           <span className="brand-sub">Live network traffic · community edition</span>
       </div>
@@ -103,6 +106,9 @@ export function TopNavigation({ visibleCount }: { visibleCount: number }) {
           onClick={() => setPrefs({ mapStyle: mapStyle === 'radar' ? lastStyle : 'radar' })}
         >
           <IconRadar />
+        </button>
+        <button className={`icon-btn ${replay ? 'on' : ''}`} aria-pressed={replay} aria-label="Time machine" title="Time machine: replay the last 18 hours (Y)" onClick={() => (replay ? exitReplay() : enterReplay())}>
+          <IconReplay />
         </button>
         <button className={`icon-btn ${overlay === 'layers' ? 'on' : ''}`} aria-label="Map layers" title="Map layers (M)" aria-expanded={overlay === 'layers'} onClick={() => setOverlay(overlay === 'layers' ? null : 'layers')}>
           <IconLayers />

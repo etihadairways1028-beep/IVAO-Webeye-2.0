@@ -56,6 +56,10 @@ export function FlightMap() {
       onUserMove: () => {
         if (useStore.getState().follow) useStore.getState().setFollow(false);
       },
+      onMeasure: (pt) => {
+        const m = useStore.getState().measure;
+        if (m) useStore.setState({ measure: [...m, pt].slice(-12) });
+      },
     });
     controller = c;
     c.setMyVid(st.prefs.myVid);
@@ -66,6 +70,7 @@ export function FlightMap() {
       if (s.taxi !== p.taxi) c.setTaxi(s.taxi?.route ?? null);
       if (s.logView !== p.logView) c.setLogRoute(s.logView);
       if (s.conflicts !== p.conflicts) c.setConflicts(s.conflicts);
+      if (s.measure !== p.measure) c.setMeasure(s.measure);
       if (s.selection !== p.selection || s.showRoute !== p.showRoute) c.setSelection(s.selection, s.showRoute);
       if (s.follow !== p.follow) c.setFollow(s.follow);
       if (s.plan !== p.plan) c.setPlan(s.plan);

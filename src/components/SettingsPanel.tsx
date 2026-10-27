@@ -16,7 +16,11 @@ export const SHORTCUTS: [string, string][] = [
   ['L', 'Cycle label density'],
   ['M', 'Map layers'],
   ['T · A · S · P · D', 'Traffic · Airports · ATC (S) · My flight (P) · ATC desk (D)'],
-  ['B · N', 'Logbook · Network stats'],
+  ['B · N · U', 'Logbook · Network stats · Friends'],
+  ['Y', 'Time machine: replay the last 18 hours'],
+  ['X', 'Measure distance and bearing'],
+  ['Ctrl + K', 'Command palette: find anything, do anything'],
+  ['Space', 'Play / pause the replay'],
   ['Shift + F', 'Fullscreen'],
   ['?', 'Shortcuts'],
 ];

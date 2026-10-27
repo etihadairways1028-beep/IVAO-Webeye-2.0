@@ -19,6 +19,15 @@ import { AtcDesk } from './components/AtcDesk';
 import { Logbook } from './components/Logbook';
 import { StatsPanel } from './components/StatsPanel';
 import { Profile } from './components/Profile';
+import { FriendsPanel } from './components/Friends';
+import { useFriendAlerts } from './lib/friends';
+import { IconStar } from './components/Icons';
+import { ReplayBar } from './components/ReplayBar';
+import { BoardOverlay } from './components/Board';
+import { MeasureCard } from './components/MeasureCard';
+import { CommandPalette } from './components/CommandPalette';
+import { WhatsNew } from './components/WhatsNew';
+import { enterReplay, exitReplay, setReplay } from './data/replay';
 import { IconClock, IconGauge } from './components/Icons';
 import { usePilotClearance } from './lib/clearance';
 import { useConflictAlerts } from './lib/conflicts';
@@ -36,12 +45,21 @@ function NavRail() {
   const incoming = useStore((s) => s.incoming);
   const atcOn = useStore((s) => !!s.atcSession);
   const alerts = useStore((s) => s.conflicts.length);
+  const friendsOn = useStore((s) => {
+    if (!s.prefs.friends.length) return 0;
+    const v = new Set(s.prefs.friends.map((f) => f.vid));
+    let n = 0;
+    for (const f of s.flights) if (!f.demo && v.has(f.vid)) n++;
+    for (const c of s.controllers) if (!c.demo && v.has(c.vid)) n++;
+    return n;
+  });
   const items: { id: PanelId; label: string; icon: React.ReactNode; badge?: string | number; key: string }[] = [
     { id: 'traffic', label: 'Traffic', icon: <IconPlane size={20} />, key: 'T' },
     { id: 'airports', label: 'Airports', icon: <IconRunway size={20} />, key: 'A' },
     { id: 'atc', label: 'ATC', icon: <IconTower size={20} />, badge: atcN || undefined, key: 'S' },
     { id: 'myflight', label: 'My flight', icon: <IconUser size={20} />, badge: incoming && !incoming.ack ? '1' : myVid || plan ? '•' : undefined, key: 'P' },
     { id: 'atcdesk', label: 'ATC desk', icon: <IconHeadset size={20} />, badge: alerts ? `!${alerts}` : atcOn ? '✓' : undefined, key: 'D' },
+    { id: 'friends', label: 'Friends', icon: <IconStar size={20} />, badge: friendsOn || undefined, key: 'U' },
     { id: 'logbook', label: 'Logbook', icon: <IconClock size={20} />, key: 'B' },
     { id: 'stats', label: 'Stats', icon: <IconGauge size={20} />, key: 'N' },
   ];
@@ -124,6 +142,13 @@ function Shortcuts() {
   );
 }
 
+function useReplayAttr() {
+  const on = useStore((s) => !!s.replay);
+  useEffect(() => {
+    document.documentElement.dataset.replay = on ? '1' : '0';
+  }, [on]);
+}
+
 function useShortcuts() {
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -133,9 +158,10 @@ function useShortcuts() {
       const sel = s.selection;
       const f = sel?.kind === 'flight' ? s.flightMap.get(sel.key) : undefined;
       const k = e.key;
-      const panels: Record<string, PanelId> = { t: 'traffic', a: 'airports', s: 'atc', p: 'myflight', d: 'atcdesk', b: 'logbook', n: 'stats' };
+      const panels: Record<string, PanelId> = { t: 'traffic', a: 'airports', s: 'atc', p: 'myflight', d: 'atcdesk', b: 'logbook', n: 'stats', u: 'friends' };
       if (k === 'Escape') {
-        if (s.overlay) s.setOverlay(null);
+        if (s.measure) useStore.setState({ measure: null });
+        else if (s.overlay) s.setOverlay(null);
         else if (s.selection) s.select(null);
         else if (s.panel) s.setPanel(null);
       } else if (k === 'F' && e.shiftKey) toggleFullscreen();
@@ -153,6 +179,9 @@ function useShortcuts() {
       else if (k === 'r') s.setPrefs({ mapStyle: s.prefs.mapStyle === 'radar' ? s.prefs.lastNonRadarStyle : 'radar' });
       else if (k === 'l') s.setPrefs({ labels: s.prefs.labels === 'auto' ? 'full' : s.prefs.labels === 'full' ? 'off' : s.prefs.labels === 'off' ? 'callsign' : 'auto' });
       else if (k === 'm') s.setOverlay(s.overlay === 'layers' ? null : 'layers');
+      else if (k === 'x') useStore.setState({ measure: s.measure ? null : [] });
+      else if (k === 'y') (s.replay ? exitReplay() : enterReplay());
+      else if (k === ' ' && s.replay) setReplay({ playing: !s.replay.playing });
       else if (k === '?') s.setOverlay(s.overlay === 'help' ? null : 'help');
       else if (panels[k]) s.setPanel(s.panel === panels[k] ? null : panels[k]);
       else return;
@@ -174,9 +203,11 @@ export default function App() {
   const flightMap = useStore((s) => s.flightMap);
   const controllers = useStore((s) => s.controllers);
   useShortcuts();
+  useReplayAttr();
   useShareLinks();
   usePilotClearance();
   useConflictAlerts();
+  useFriendAlerts();
 
   useEffect(() => {
     loadAirports()
@@ -255,6 +286,12 @@ export default function App() {
       {panel === 'logbook' && <Logbook />}
       {panel === 'stats' && <StatsPanel />}
       {panel === 'profile' && <Profile />}
+      {panel === 'friends' && <FriendsPanel />}
+      <ReplayBar />
+      <BoardOverlay />
+      <MeasureCard />
+      <CommandPalette />
+      <WhatsNew />
       {selFlight && <AircraftDetailsPanel key={selFlight.key} flight={selFlight} />}
       {!selFlight && selAtc && <AtcDetailsPanel key={selAtc.key} c={selAtc} />}
       {selFlight && <TelemetryBar f={selFlight} />}

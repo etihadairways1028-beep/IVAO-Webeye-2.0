@@ -173,7 +173,7 @@ export interface Counts {
   uniqueUsers24h: number | null;
 }
 
-export type FeedStatus = 'idle' | 'connecting' | 'live' | 'stale' | 'error' | 'demo';
+export type FeedStatus = 'idle' | 'connecting' | 'live' | 'stale' | 'error' | 'demo' | 'replay';
 
 export interface NavFix {
   ident: string;

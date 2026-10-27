@@ -6,7 +6,7 @@ import { loadAtcSession, type AtcSession, type Clearance } from '../data/atc';
 
 export type MapStyleId = 'dark' | 'standard' | 'satellite' | 'radar';
 export type LabelMode = 'auto' | 'off' | 'callsign' | 'full';
-export type Panel = 'traffic' | 'airports' | 'atc' | 'myflight' | 'atcdesk' | 'logbook' | 'stats' | 'profile';
+export type Panel = 'traffic' | 'airports' | 'atc' | 'myflight' | 'atcdesk' | 'logbook' | 'stats' | 'profile' | 'friends';
 
 export interface Filters {
   wake: WakeCat[]; // empty = all
@@ -29,6 +29,10 @@ export interface Prefs {
   pollSec: 15 | 30 | 60;
   source: 'live' | 'demo';
   myVid: string;
+  /** Pilots and controllers you follow, by IVAO VID. */
+  friends: { vid: number; name: string }[];
+  /** Browser notifications for friends (in addition to in-app toasts). */
+  friendNotify: boolean;
   simbriefUser: string;
   transitionAlt: number;
   filters: Filters;
@@ -48,6 +52,8 @@ const DEFAULT_PREFS: Prefs = {
   pollSec: 15,
   source: 'live',
   myVid: '',
+  friends: [],
+  friendNotify: false,
   simbriefUser: '',
   transitionAlt: 18000,
   filters: DEFAULT_FILTERS,
@@ -103,6 +109,12 @@ interface State {
   logView: { routes: { route: [number, number, number][]; dep?: string | null; arr?: string | null }[]; landed?: number } | null;
   /** Pilot whose profile is open. */
   profileVid: number | null;
+  /** Time machine state (null when showing live traffic). t is the replayed time in ms. */
+  replay: { t: number; playing: boolean; speed: number; oldest: number | null; latest: number | null; loading: boolean; error: string | null; gap?: boolean } | null;
+  /** Distance tool points (null when the tool is off). */
+  measure: { lon: number; lat: number; label: string }[] | null;
+  /** Airport shown on the full-screen board. */
+  board: string | null;
   /** Traffic alerts for a verified controller. */
   conflicts: import('../lib/conflicts').Conflict[];
   atcSession: AtcSession | null;
@@ -152,6 +164,9 @@ export const useStore = create<State>((set, get) => ({
   logView: null,
   profileVid: null,
   conflicts: [],
+  replay: null,
+  board: null,
+  measure: null,
   atcSession: loadAtcSession(),
   incoming: null,
 

@@ -2,7 +2,7 @@ import { useStore } from '../state/store';
 import { IconLogo, IconX } from './Icons';
 import { useInstall } from '../lib/install';
 
-export const APP_VERSION = '2.1';
+export const APP_VERSION = '3.0';
 
 /** Product information, data attribution and the independence notice. */
 export function About() {
@@ -27,7 +27,7 @@ export function About() {
         details, SimBrief flight plans, airport information and ground charts.
       </p>
       <div className="notice" role="note">
-        <strong>Independent community project.</strong> IVAO WebEye 2.x is a concept built by members of the IVAO community. It is not an official IVAO release
+        <strong>Independent community project.</strong> IVAO WebEye is a concept built by members of the IVAO community. It is not an official IVAO release
         and is not endorsed by IVAO unless IVAO states otherwise. “IVAO” is a trademark of its owner. For simulation use only; never use it for real-world navigation.
       </div>
       <div className="pop-label">Data sources</div>

@@ -1,3 +1,4 @@
+import { FriendStar } from './Friends';
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../state/store';
 import { badges, fetchLogbook, landingRate, type Logbook as LB } from '../data/logbook';
@@ -94,6 +95,7 @@ export function Profile() {
       }}
       actions={
         <>
+          <FriendStar vid={vid} name={callsign ?? `VID ${vid}`} />
           <button className="chip-btn" onClick={share} title="Copy a link to this profile">
             <IconShare size={15} /> Share
           </button>
