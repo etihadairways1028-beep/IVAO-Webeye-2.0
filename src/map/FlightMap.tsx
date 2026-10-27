@@ -64,6 +64,7 @@ export function FlightMap() {
     const unsub = useStore.subscribe((s, p) => {
       if (s.controllers !== p.controllers) c.setControllers(s.controllers);
       if (s.taxi !== p.taxi) c.setTaxi(s.taxi?.route ?? null);
+      if (s.logView !== p.logView) c.setLogRoute(s.logView);
       if (s.selection !== p.selection || s.showRoute !== p.showRoute) c.setSelection(s.selection, s.showRoute);
       if (s.follow !== p.follow) c.setFollow(s.follow);
       if (s.plan !== p.plan) c.setPlan(s.plan);

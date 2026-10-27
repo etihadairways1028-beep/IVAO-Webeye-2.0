@@ -58,6 +58,7 @@ export class MapController {
   private styleTimer = 0;
   private track: TrackPoint[] | null = null;
   private taxi: TaxiRoute | null = null;
+  private logRoute: [number, number, number][] | null = null;
   private hoverFrame = 0;
   private destroyed = false;
   private cb: MapCallbacks;
@@ -209,6 +210,7 @@ export class MapController {
     mk('box-sel', 'rgba(40,6,30,0.92)', '#ff4fc3');
     mk('box-mine', 'rgba(4,30,26,0.92)', '#2fd6b5');
     for (const [k, col] of Object.entries(ATC_COLORS)) mk(`atc-${k}`, 'rgba(8,13,24,0.92)', col);
+    mk('twy-box', '#f2c94c', '#141005');
   }
 
   private install() {
@@ -240,15 +242,34 @@ export class MapController {
     // Airport ground chart (OpenStreetMap): drawn under everything else.
     src('chart', allCharts());
     const chartMin = 11.5;
-    m.addLayer({ id: 'chart-apron', type: 'fill', source: 'chart', minzoom: chartMin, filter: ['all', ['==', ['geometry-type'], 'Polygon'], ['==', ['get', 'kind'], 'apron']], paint: { 'fill-color': dark ? '#141c2e' : '#dfe3ea', 'fill-opacity': 0.9 } });
-    m.addLayer({ id: 'chart-bldg', type: 'fill', source: 'chart', minzoom: chartMin, filter: ['all', ['==', ['geometry-type'], 'Polygon'], ['in', ['get', 'kind'], ['literal', ['terminal', 'hangar']]]], paint: { 'fill-color': dark ? '#26324a' : '#c3cad6', 'fill-outline-color': dark ? '#3a4866' : '#9aa5b5' } });
-    m.addLayer({ id: 'chart-runway', type: 'line', source: 'chart', minzoom: chartMin, filter: ['all', ['==', ['geometry-type'], 'LineString'], ['==', ['get', 'kind'], 'runway']], layout: { 'line-cap': 'butt' }, paint: { 'line-color': dark ? '#3b465e' : '#8a94a6', 'line-width': ['interpolate', ['exponential', 2], ['zoom'], 12, 6, 16, 60, 18, 220] } });
-    m.addLayer({ id: 'chart-taxiway', type: 'line', source: 'chart', minzoom: chartMin, filter: ['all', ['==', ['geometry-type'], 'LineString'], ['in', ['get', 'kind'], ['literal', ['taxiway', 'taxilane']]]], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': dark ? '#c9a73a' : '#c89b12', 'line-opacity': ['match', ['get', 'kind'], 'taxilane', 0.45, 0.85], 'line-width': ['interpolate', ['exponential', 2], ['zoom'], 12, 0.8, 15, 2.2, 18, 8] } });
-    m.addLayer({ id: 'chart-hold', type: 'line', source: 'chart', minzoom: 14, filter: ['all', ['==', ['geometry-type'], 'LineString'], ['==', ['get', 'kind'], 'holding_position']], paint: { 'line-color': '#ff6b6b', 'line-width': 2 } });
-    m.addLayer({ id: 'chart-taxi-labels', type: 'symbol', source: 'chart', minzoom: 13.5, filter: ['all', ['==', ['geometry-type'], 'LineString'], ['==', ['get', 'kind'], 'taxiway'], ['!=', ['get', 'label'], '']], layout: { 'symbol-placement': 'line', 'symbol-spacing': 220, 'text-field': ['get', 'label'], 'text-font': FONT_BOLD, 'text-size': 11, 'text-keep-upright': true, 'text-rotation-alignment': 'viewport' }, paint: { 'text-color': '#1a1405', 'text-halo-color': '#f2cc4d', 'text-halo-width': 3 } });
-    m.addLayer({ id: 'chart-rwy-labels', type: 'symbol', source: 'chart', minzoom: 12.5, filter: ['all', ['==', ['geometry-type'], 'LineString'], ['==', ['get', 'kind'], 'runway'], ['!=', ['get', 'label'], '']], layout: { 'symbol-placement': 'line-center', 'text-field': ['get', 'label'], 'text-font': FONT_BOLD, 'text-size': 12, 'text-keep-upright': true }, paint: { 'text-color': '#ffffff', 'text-halo-color': '#111827', 'text-halo-width': 2 } });
-    m.addLayer({ id: 'chart-stands', type: 'circle', source: 'chart', minzoom: 14.5, filter: ['all', ['==', ['geometry-type'], 'Point'], ['in', ['get', 'kind'], ['literal', ['parking_position', 'gate']]]], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 14.5, 2, 18, 5], 'circle-color': ['match', ['get', 'kind'], 'gate', '#7db4ff', '#3ff0d0'], 'circle-opacity': 0.9 } });
-    m.addLayer({ id: 'chart-stand-labels', type: 'symbol', source: 'chart', minzoom: 15.5, filter: ['all', ['==', ['geometry-type'], 'Point'], ['in', ['get', 'kind'], ['literal', ['parking_position', 'gate']]], ['!=', ['get', 'label'], '']], layout: { 'text-field': ['get', 'label'], 'text-font': FONT_REG, 'text-size': 10, 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true }, paint: { 'text-color': dark ? '#b8fff2' : '#0f5132', 'text-halo-color': halo, 'text-halo-width': 1.2 } });
+    // Navigraph/Jeppesen-style diagram: pavement drawn to real width (w10 = metres→px at z10).
+    const W = (min = 1) => ['interpolate', ['exponential', 2], ['zoom'], 10, ['max', min * 0.25, ['get', 'w10']], 20, ['*', ['get', 'w10'], 1024]] as unknown as ExpressionSpecification;
+    const C = dark
+      ? { apron: '#1a2230', bldg: '#2c3648', bldgLine: '#3d4a60', rwy: '#3a4250', rwyEdge: '#596273', twy: '#2a3240', twyEdge: '#3a4454', cl: '#f2c94c', standFill: '#0e151c' }
+      : { apron: '#e4e7ec', bldg: '#c3c9d2', bldgLine: '#a3abb7', rwy: '#59606b', rwyEdge: '#3f454e', twy: '#cfd4db', twyEdge: '#b4bbc5', cl: '#c99a00', standFill: '#ffffff' };
+    const isLine = ['==', ['geometry-type'], 'LineString'];
+    const isPoly = ['==', ['geometry-type'], 'Polygon'];
+    const isPt = ['==', ['geometry-type'], 'Point'];
+    const kindIs = (...k: string[]) => (k.length === 1 ? ['==', ['get', 'kind'], k[0]] : ['in', ['get', 'kind'], ['literal', k]]);
+    const F = (...c: unknown[]) => ['all', ...c] as unknown as maplibregl.FilterSpecification;
+    m.addLayer({ id: 'chart-apron', type: 'fill', source: 'chart', minzoom: chartMin, filter: F(isPoly, kindIs('apron')), paint: { 'fill-color': C.apron, 'fill-opacity': 0.95 } });
+    m.addLayer({ id: 'chart-bldg', type: 'fill', source: 'chart', minzoom: chartMin, filter: F(isPoly, kindIs('terminal', 'hangar')), paint: { 'fill-color': C.bldg, 'fill-outline-color': C.bldgLine } });
+    // taxiways: edge, pavement, yellow centreline
+    m.addLayer({ id: 'chart-twy-edge', type: 'line', source: 'chart', minzoom: chartMin, filter: F(isLine, kindIs('taxiway', 'taxilane')), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': C.twyEdge, 'line-width': ['+', W(), 1.5] as unknown as ExpressionSpecification } });
+    m.addLayer({ id: 'chart-taxiway', type: 'line', source: 'chart', minzoom: chartMin, filter: F(isLine, kindIs('taxiway', 'taxilane')), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': C.twy, 'line-width': W() } });
+    m.addLayer({ id: 'chart-twy-cl', type: 'line', source: 'chart', minzoom: 13, filter: F(isLine, kindIs('taxiway', 'taxilane')), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': C.cl, 'line-opacity': ['match', ['get', 'kind'], 'taxilane', 0.55, 0.95], 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.6, 16, 1.2, 19, 2.4] } });
+    // runways: edge, pavement, dashed white centreline
+    m.addLayer({ id: 'chart-rwy-edge', type: 'line', source: 'chart', minzoom: chartMin, filter: F(isLine, kindIs('runway')), layout: { 'line-cap': 'butt' }, paint: { 'line-color': C.rwyEdge, 'line-width': ['+', W(2), 2] as unknown as ExpressionSpecification } });
+    m.addLayer({ id: 'chart-runway', type: 'line', source: 'chart', minzoom: chartMin, filter: F(isLine, kindIs('runway')), layout: { 'line-cap': 'butt' }, paint: { 'line-color': C.rwy, 'line-width': W(2) } });
+    m.addLayer({ id: 'chart-rwy-cl', type: 'line', source: 'chart', minzoom: 14, filter: F(isLine, kindIs('runway')), layout: { 'line-cap': 'butt' }, paint: { 'line-color': '#ffffff', 'line-opacity': 0.85, 'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.8, 18, 2], 'line-dasharray': [6, 5] } });
+    m.addLayer({ id: 'chart-hold', type: 'line', source: 'chart', minzoom: 14, filter: F(isLine, kindIs('holding_position')), paint: { 'line-color': '#ff4d4d', 'line-width': ['interpolate', ['linear'], ['zoom'], 14, 2, 18, 4] } });
+    // runway end numbers, rotated so a pilot lining up reads them upright
+    m.addLayer({ id: 'chart-rwy-ends', type: 'symbol', source: 'chart', minzoom: 12.5, filter: F(isPt, kindIs('rwy-end')), layout: { 'text-field': ['get', 'label'], 'text-font': FONT_BOLD, 'text-size': ['interpolate', ['linear'], ['zoom'], 12.5, 11, 16, 16], 'text-rotate': ['get', 'rot'], 'text-rotation-alignment': 'map', 'text-allow-overlap': true }, paint: { 'text-color': '#ffffff', 'text-halo-color': '#111827', 'text-halo-width': 2 } });
+    // taxiway names in yellow boxes with black text, like a real airport chart
+    m.addLayer({ id: 'chart-taxi-labels', type: 'symbol', source: 'chart', minzoom: 13.5, filter: F(isLine, kindIs('taxiway'), ['!=', ['get', 'label'], '']), layout: { 'symbol-placement': 'line', 'symbol-spacing': 260, 'text-field': ['get', 'label'], 'text-font': FONT_BOLD, 'text-size': ['interpolate', ['linear'], ['zoom'], 13.5, 10.5, 17, 13], 'text-keep-upright': true, 'text-rotation-alignment': 'viewport', 'icon-image': 'twy-box', 'icon-text-fit': 'both', 'icon-text-fit-padding': [1, 3, 1, 3], 'icon-rotation-alignment': 'viewport' }, paint: { 'text-color': '#141005' } });
+    m.addLayer({ id: 'chart-rwy-labels', type: 'symbol', source: 'chart', minzoom: 15, maxzoom: 15.5, filter: F(isLine, kindIs('runway'), ['!=', ['get', 'label'], '']), layout: { 'symbol-placement': 'line-center', 'text-field': ['get', 'label'], 'text-font': FONT_BOLD, 'text-size': 12, 'text-keep-upright': true }, paint: { 'text-color': '#ffffff', 'text-halo-color': '#111827', 'text-halo-width': 2 } });
+    m.addLayer({ id: 'chart-stands', type: 'circle', source: 'chart', minzoom: 14.5, filter: F(isPt, kindIs('parking_position', 'gate')), paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 14.5, 2.5, 18, 6], 'circle-color': C.standFill, 'circle-stroke-color': ['match', ['get', 'kind'], 'gate', '#3aa7ff', '#14b8a6'], 'circle-stroke-width': 1.6 } });
+    m.addLayer({ id: 'chart-stand-labels', type: 'symbol', source: 'chart', minzoom: 15.5, filter: F(isPt, kindIs('parking_position', 'gate'), ['!=', ['get', 'label'], '']), layout: { 'text-field': ['get', 'label'], 'text-font': FONT_BOLD, 'text-size': 10.5, 'text-offset': [0, 1], 'text-anchor': 'top', 'text-optional': true }, paint: { 'text-color': dark ? '#d8f5f1' : '#0b3d38', 'text-halo-color': halo, 'text-halo-width': 1.4 } });
 
     // FIR boundaries: faint chart lines everywhere, filled in amber where a centre is online.
     src('firs', firShapes() ?? EMPTY);
@@ -262,8 +283,8 @@ export class MapController {
     m.addLayer({ id: 'atc-ring-line', type: 'line', source: 'atc-rings', layout: { visibility: this.vis('atc') }, paint: { 'line-color': ['get', 'color'], 'line-opacity': ['case', ['get', 'sel'], 1, 0.75], 'line-width': ['case', ['get', 'sel'], 2.2, 1.3] } });
 
     src('runways', this.runways);
-    m.addLayer({ id: 'runways', type: 'line', source: 'runways', minzoom: 9, layout: { 'line-cap': 'butt' }, paint: { 'line-color': dark ? '#4a5770' : '#64748b', 'line-width': ['interpolate', ['exponential', 2], ['zoom'], 9, 2, 14, 14] } });
-    m.addLayer({ id: 'runway-labels', type: 'symbol', source: 'runways', minzoom: 11, layout: { 'symbol-placement': 'line-center', 'text-field': ['get', 'name'], 'text-font': FONT_BOLD, 'text-size': 11, 'text-keep-upright': true }, paint: { 'text-color': textColor, 'text-halo-color': halo, 'text-halo-width': 1.4 } });
+    m.addLayer({ id: 'runways', type: 'line', source: 'runways', minzoom: 9, maxzoom: 13, layout: { 'line-cap': 'butt' }, paint: { 'line-color': dark ? '#4a5770' : '#64748b', 'line-width': ['interpolate', ['exponential', 2], ['zoom'], 9, 2, 14, 14] } });
+    m.addLayer({ id: 'runway-labels', type: 'symbol', source: 'runways', minzoom: 11, maxzoom: 12.5, layout: { 'symbol-placement': 'line-center', 'text-field': ['get', 'name'], 'text-font': FONT_BOLD, 'text-size': 11, 'text-keep-upright': true }, paint: { 'text-color': textColor, 'text-halo-color': halo, 'text-halo-width': 1.4 } });
 
     src('airports');
     m.addLayer({ id: 'airports', type: 'circle', source: 'airports', layout: { visibility: this.vis('airports') }, filter: ['any', ['>=', ['get', 'size'], 3], ['all', ['>=', ['get', 'size'], 2], ['>=', ['zoom'], 5.5]], ['>=', ['zoom'], 8]], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 1.4, 8, 3.5], 'circle-color': dark ? '#5b6b8c' : '#64748b', 'circle-stroke-width': 0, 'circle-opacity': 0.8 } });
@@ -318,6 +339,12 @@ export class MapController {
     m.addLayer({ id: 'trail-casing', type: 'line', source: 'trail', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': dark ? 'rgba(3,6,12,0.75)' : 'rgba(255,255,255,0.9)', 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 5, 14, 7] } });
     m.addLayer({ id: 'trail-line', type: 'line', source: 'trail', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#33b1ff', 'line-gradient': ['interpolate', ['linear'], ['line-progress'], 0, '#f2e94e', 1, '#2f7bff'], 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 2.6, 14, 4] } });
     this.trailGradientSig = '';
+    // A past flight picked in the logbook.
+    src('logroute', EMPTY, { lineMetrics: true });
+    m.addLayer({ id: 'log-casing', type: 'line', source: 'logroute', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': dark ? 'rgba(3,6,12,0.75)' : 'rgba(255,255,255,0.9)', 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 5, 14, 7] } });
+    m.addLayer({ id: 'log-line', type: 'line', source: 'logroute', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#33b1ff', 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 2.6, 14, 4] } });
+    m.addLayer({ id: 'log-ends', type: 'circle', source: 'logroute', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 5, 'circle-color': dark ? '#0b1222' : '#fff', 'circle-stroke-color': '#14b8a6', 'circle-stroke-width': 2 } });
+    m.addLayer({ id: 'log-end-labels', type: 'symbol', source: 'logroute', filter: ['==', ['geometry-type'], 'Point'], layout: { 'text-field': ['get', 'icao'], 'text-font': FONT_BOLD, 'text-size': 11.5, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-allow-overlap': true }, paint: { 'text-color': dark ? '#e8eef3' : '#0f172a', 'text-halo-color': halo, 'text-halo-width': 1.5 } });
     m.addLayer({ id: 'route-ends', type: 'circle', source: 'route', filter: ['==', ['get', 'kind'], 'end'], paint: { 'circle-radius': 5, 'circle-color': dark ? '#0b1222' : '#fff', 'circle-stroke-color': ROUTE_COLORS.flown, 'circle-stroke-width': 2 } });
     m.addLayer({ id: 'route-end-labels', type: 'symbol', source: 'route', filter: ['==', ['get', 'kind'], 'end'], layout: { 'text-field': ['get', 'icao'], 'text-font': FONT_BOLD, 'text-size': 11.5, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-allow-overlap': true }, paint: { 'text-color': '#ffb3e6', 'text-halo-color': halo, 'text-halo-width': 1.5 } });
 
@@ -381,6 +408,33 @@ export class MapController {
     this.pushAircraft();
     this.pushTails();
     this.pushTaxi();
+    this.pushLogRoute();
+  }
+
+  /** Route of a logged flight: [lon, lat, altitude in hundreds of feet]. */
+  setLogRoute(r: { route: [number, number, number][]; dep?: string | null; arr?: string | null } | null) {
+    this.logRoute = r?.route ?? null;
+    this.logEnds = r ? [r.dep ?? '', r.arr ?? ''] : ['', ''];
+    this.pushLogRoute();
+  }
+  private logEnds: [string, string] = ['', ''];
+  private pushLogRoute() {
+    const r = this.logRoute;
+    if (!r || r.length < 2) {
+      this.set('logroute', EMPTY);
+      return;
+    }
+    const pts = smoothPath(unwrap(r.map((p) => [p[0], p[1]] as [number, number])));
+    const raw = unwrap(r.map((p) => [p[0], p[1]] as [number, number]));
+    this.set('logroute', {
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', geometry: { type: 'LineString', coordinates: pts }, properties: {} },
+        { type: 'Feature', geometry: { type: 'Point', coordinates: raw[0] }, properties: { icao: this.logEnds[0] } },
+        { type: 'Feature', geometry: { type: 'Point', coordinates: raw[raw.length - 1] }, properties: { icao: this.logEnds[1] } },
+      ],
+    });
+    if (this.map.getLayer('log-line')) this.map.setPaintProperty('log-line', 'line-gradient', this.trailGradient(raw, r.map((p) => p[2] * 100)));
   }
 
   private pushTaxi() {

@@ -16,6 +16,9 @@ import { ChartChip } from './components/ChartChip';
 import { IconLogo } from './components/Icons';
 import { IconAlert, IconHeadset, IconPlane, IconRunway, IconTower, IconUser, IconX } from './components/Icons';
 import { AtcDesk } from './components/AtcDesk';
+import { Logbook } from './components/Logbook';
+import { StatsPanel } from './components/StatsPanel';
+import { IconClock, IconGauge } from './components/Icons';
 import { usePilotClearance } from './lib/clearance';
 import { loadAirports } from './data/airports';
 import { startFeed, retryNow } from './data/feed';
@@ -36,6 +39,8 @@ function NavRail() {
     { id: 'atc', label: 'ATC', icon: <IconTower size={20} />, badge: atcN || undefined, key: 'S' },
     { id: 'myflight', label: 'My flight', icon: <IconUser size={20} />, badge: incoming && !incoming.ack ? '1' : myVid || plan ? '•' : undefined, key: 'P' },
     { id: 'atcdesk', label: 'ATC desk', icon: <IconHeadset size={20} />, badge: atcOn ? '✓' : undefined, key: 'D' },
+    { id: 'logbook', label: 'Logbook', icon: <IconClock size={20} />, key: 'B' },
+    { id: 'stats', label: 'Stats', icon: <IconGauge size={20} />, key: 'N' },
   ];
   return (
     <nav className="rail glass" aria-label="Views">
@@ -125,7 +130,7 @@ function useShortcuts() {
       const sel = s.selection;
       const f = sel?.kind === 'flight' ? s.flightMap.get(sel.key) : undefined;
       const k = e.key;
-      const panels: Record<string, PanelId> = { t: 'traffic', a: 'airports', s: 'atc', p: 'myflight', d: 'atcdesk' };
+      const panels: Record<string, PanelId> = { t: 'traffic', a: 'airports', s: 'atc', p: 'myflight', d: 'atcdesk', b: 'logbook', n: 'stats' };
       if (k === 'Escape') {
         if (s.overlay) s.setOverlay(null);
         else if (s.selection) s.select(null);
@@ -243,6 +248,8 @@ export default function App() {
       {panel === 'atc' && <ATCStations />}
       {panel === 'myflight' && <MyFlight />}
       {panel === 'atcdesk' && <AtcDesk />}
+      {panel === 'logbook' && <Logbook />}
+      {panel === 'stats' && <StatsPanel />}
       {selFlight && <AircraftDetailsPanel key={selFlight.key} flight={selFlight} />}
       {!selFlight && selAtc && <AtcDetailsPanel key={selAtc.key} c={selAtc} />}
       {selFlight && <TelemetryBar f={selFlight} />}

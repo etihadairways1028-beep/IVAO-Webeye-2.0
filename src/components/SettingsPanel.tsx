@@ -16,6 +16,7 @@ export const SHORTCUTS: [string, string][] = [
   ['L', 'Cycle label density'],
   ['M', 'Map layers'],
   ['T · A · S · P · D', 'Traffic · Airports · ATC (S) · My flight (P) · ATC desk (D)'],
+  ['B · N', 'Logbook · Network stats'],
   ['Shift + F', 'Fullscreen'],
   ['?', 'Shortcuts'],
 ];

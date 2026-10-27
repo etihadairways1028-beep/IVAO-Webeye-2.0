@@ -1,3 +1,4 @@
+import { Columns } from './charts';
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../state/store';
 import { getAirport, getRunways, searchAirports, surfaceLabel } from '../data/airports';
@@ -153,6 +154,8 @@ function AirportDetail({ a }: { a: Airport }) {
       </div>
 
       <ChartCard a={a} />
+
+      <ArrivalsOutlook arr={arr} icao={a.icao} />
 
       <Section title="Online ATC" icon={<IconTower size={15} />}>
         {atc.length ? (
@@ -320,3 +323,27 @@ export function AirportExplorer() {
     </Panel>
   );
 }
+
+/** Inbound flights by estimated arrival time, in 15-minute slots over the next two hours. */
+function ArrivalsOutlook({ arr, icao }: { arr: Flight[]; icao: string }) {
+  const slots = Array.from({ length: 8 }, (_, i) => ({ x: `+${i * 15}`, v: 0, cs: [] as string[] }));
+  for (const f of arr) {
+    if (f.onGround || f.arrivalDistance == null || !f.groundSpeed || f.groundSpeed < 60) continue;
+    const min = (f.arrivalDistance / f.groundSpeed) * 60;
+    const i = Math.floor(min / 15);
+    if (i >= 0 && i < slots.length) slots[i].v++, slots[i].cs.push(f.callsign);
+  }
+  const total = slots.reduce((a, b) => a + b.v, 0);
+  if (!total) return null;
+  return (
+    <Section title="Arrivals, next 2 hours" aside={<span className="dim small">{total} expected</span>}>
+      <Columns
+        height={90}
+        label={`Flights expected at ${icao} in 15-minute slots`}
+        data={slots.map((s, i) => ({ x: s.x, v: s.v, tip: `${i * 15}–${i * 15 + 15} min: ${s.v ? s.cs.slice(0, 4).join(', ') + (s.cs.length > 4 ? ` +${s.cs.length - 4}` : '') : 'none'}` }))}
+      />
+      <p className="fineprint">Minutes from now, estimated from each flight's distance and groundspeed.</p>
+    </Section>
+  );
+}
+

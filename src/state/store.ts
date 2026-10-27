@@ -6,7 +6,7 @@ import { loadAtcSession, type AtcSession, type Clearance } from '../data/atc';
 
 export type MapStyleId = 'dark' | 'standard' | 'satellite' | 'radar';
 export type LabelMode = 'auto' | 'off' | 'callsign' | 'full';
-export type Panel = 'traffic' | 'airports' | 'atc' | 'myflight' | 'atcdesk';
+export type Panel = 'traffic' | 'airports' | 'atc' | 'myflight' | 'atcdesk' | 'logbook' | 'stats';
 
 export interface Filters {
   wake: WakeCat[]; // empty = all
@@ -99,6 +99,8 @@ interface State {
   taxi: { icao: string; text: string; route: TaxiRoute } | null;
   assignedSquawk: string;
   chartFocus: string | null;
+  /** A logged flight drawn on the map from the logbook. */
+  logView: { route: [number, number, number][]; dep?: string | null; arr?: string | null; landed: number } | null;
   atcSession: AtcSession | null;
   incoming: Clearance | null;
 
@@ -143,6 +145,7 @@ export const useStore = create<State>((set, get) => ({
   taxi: null,
   assignedSquawk: '',
   chartFocus: null,
+  logView: null,
   atcSession: loadAtcSession(),
   incoming: null,
 

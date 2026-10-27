@@ -31,6 +31,14 @@ interface OsmEl {
   geometry?: { lat: number; lon: number }[];
 }
 
+const DEFAULT_WIDTH: Record<string, number> = { runway: 45, taxiway: 20, taxilane: 12, holding_position: 0 };
+/** Width in metres → pixels at zoom 10 (MapLibre 512px tiles), so lines are drawn to real scale. */
+const px10 = (w: number, lat: number) => (w * 1024) / (78271.517 * Math.max(0.2, Math.cos((lat * Math.PI) / 180)));
+const brgDeg = (a: number[], b: number[]) => {
+  const k = Math.cos(((a[1] + b[1]) / 2) * (Math.PI / 180));
+  return ((Math.atan2((b[0] - a[0]) * k, b[1] - a[1]) * 180) / Math.PI + 360) % 360;
+};
+
 function toGeoJSON(els: OsmEl[]): FC {
   const features: GeoJSON.Feature[] = [];
   for (const e of els) {
@@ -50,7 +58,21 @@ function toGeoJSON(els: OsmEl[]): FC {
           features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: c }, properties: { kind, label } });
         }
       } else {
-        features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: { kind, label } });
+        const w = parseFloat((t.width ?? '').replace(',', '.')) || DEFAULT_WIDTH[kind] || 15;
+        features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: { kind, label, w10: px10(w, coords[0][1]) } });
+        // Runway ends: the designator a pilot lining up there would see, rotated along the runway.
+        if (kind === 'runway' && label.includes('/')) {
+          const a = coords[0], b = coords[coords.length - 1];
+          const hdg = brgDeg(a, b);
+          const parts = label.split('/').map((x) => x.trim());
+          const num = (d: string) => (parseInt(d, 10) || 0) * 10;
+          const diff = (d: string, h: number) => Math.abs(((num(d) - h + 540) % 360) - 180);
+          const atA = diff(parts[0], hdg) <= diff(parts[1], hdg) ? parts[0] : parts[1];
+          const atB = atA === parts[0] ? parts[1] : parts[0];
+          const inset = (p: number[], q: number[], f: number) => [p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f];
+          features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: inset(a, b, 0.04) }, properties: { kind: 'rwy-end', label: atA, rot: hdg } });
+          features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: inset(b, a, 0.04) }, properties: { kind: 'rwy-end', label: atB, rot: (hdg + 180) % 360 } });
+        }
       }
     }
   }

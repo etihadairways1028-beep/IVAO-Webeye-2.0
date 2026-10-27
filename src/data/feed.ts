@@ -56,7 +56,45 @@ function persist(flights: Flight[]) {
   }
 }
 
+// Your own touchdowns, seen by this browser between position reports (sharper than the
+// recorder's one-a-minute estimate). Matched to logbook entries by callsign and time.
+const prevAir = new Map<string, { vs: number | null; alt: number | null }>();
+function watchLandings(flights: Flight[]) {
+  const vid = Number(useStore.getState().prefs.myVid);
+  if (!vid) return;
+  for (const f of flights) {
+    if (f.vid !== vid || f.demo) continue;
+    const p = prevAir.get(f.key);
+    if (p && f.onGround) {
+      if (p.vs != null) saveLanding({ callsign: f.callsign, at: Date.now(), fpm: Math.round(p.vs), lastAlt: p.alt });
+      prevAir.delete(f.key);
+    } else if (!f.onGround) prevAir.set(f.key, { vs: f.verticalSpeed, alt: f.altitude });
+  }
+}
+export interface SeenLanding {
+  callsign: string;
+  at: number;
+  fpm: number;
+  lastAlt: number | null;
+}
+const LANDINGS_KEY = 'webeye2.landings.v1';
+export function seenLandings(): SeenLanding[] {
+  try {
+    return JSON.parse(localStorage.getItem(LANDINGS_KEY) ?? '[]') as SeenLanding[];
+  } catch {
+    return [];
+  }
+}
+function saveLanding(l: SeenLanding) {
+  try {
+    localStorage.setItem(LANDINGS_KEY, JSON.stringify([l, ...seenLandings()].slice(0, 300)));
+  } catch {
+    /* storage blocked */
+  }
+}
+
 function recordTrails(flights: Flight[]) {
+  watchLandings(flights);
   const seen = new Set<string>();
   const keep = keepKeys(flights);
   for (const f of flights) {
