@@ -1,0 +1,27 @@
+# Builds the WebEye Link sim add-on into a Windows .exe and publishes it as a release.
+name: WebEye Link
+on:
+  push:
+    branches: [main]
+    paths: ['companion/**', '.github/workflows/webeye-link.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install SimConnect==0.4.26 pyinstaller==6.10.0
+      - run: pyinstaller --onefile --console --name WebEyeLink --collect-data SimConnect companion/webeye_link.py
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp companion/webeye_link.py dist/webeye_link.py
+          gh release view webeye-link >/dev/null 2>&1 || gh release create webeye-link --title "WebEye Link (sim add-on)" --notes "Exact landing rates for your IVAO WebEye logbook. Windows: download WebEyeLink.exe and run it next to MSFS or X-Plane. Mac/Linux with X-Plane: download webeye_link.py and run it with Python 3."
+          gh release upload webeye-link dist/WebEyeLink.exe dist/webeye_link.py --clobber
