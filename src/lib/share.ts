@@ -11,6 +11,15 @@ import { selectAirport, selectController, selectFlight } from './actions';
  */
 type Target = { kind: 'f' | 'c' | 'a'; id: string };
 
+/** #u=123456 opens a pilot profile. */
+function openProfileFromHash(): boolean {
+  const m = /^#u=(\d{3,8})$/.exec(window.location.hash);
+  if (!m) return false;
+  useStore.setState({ profileVid: Number(m[1]) });
+  useStore.getState().setPanel('profile');
+  return true;
+}
+
 function parseHash(): Target | null {
   const m = /^#([fca])=([A-Za-z0-9_-]{2,16})$/.exec(window.location.hash);
   return m ? { kind: m[1] as Target['kind'], id: m[2].toUpperCase() } : null;
@@ -89,9 +98,14 @@ export function useShareLinks() {
     }
   }, [flights, controllers, airportsReady, status, hashTick]);
 
+  useEffect(() => {
+    openProfileFromHash();
+  }, []);
+
   // Mirror the selection into the address bar without adding history entries.
   useEffect(() => {
     if (pending.current) return; // don't wipe a link before it has been opened
+    if (window.location.hash.startsWith('#u=') && !selection) return; // keep a profile link
     const h = hashFor(selection);
     if (h === window.location.hash || (!h && !window.location.hash)) return;
     const { pathname, search } = window.location;
@@ -101,6 +115,7 @@ export function useShareLinks() {
   // Pasting a new link into the address bar of an open tab.
   useEffect(() => {
     const onHash = () => {
+      if (openProfileFromHash()) return;
       const t = parseHash();
       if (!t || hashFor(useStore.getState().selection) === window.location.hash) return;
       pending.current = t;

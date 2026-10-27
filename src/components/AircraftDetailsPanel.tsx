@@ -7,6 +7,8 @@ import { distanceNm } from '../lib/geo';
 import { Badge, KV, Panel } from './ui';
 import { IconClock, IconCrosshair, IconFollow, IconPlane, IconRoute, IconShare } from './Icons';
 import { shareSelection } from '../lib/share';
+import { openProfile } from './Logbook';
+import { IconUser } from './Icons';
 import type { Flight } from '../types';
 import { flightProgress, type Progress } from '../lib/progress';
 
@@ -179,6 +181,11 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
           <KV optional k="Simulator" v={f.simulator ?? dash} />
           <KV optional k="Software" v={f.software ?? dash} wide />
         </div>
+        {!f.demo && (
+          <button className="chip-btn" onClick={() => openProfile(f.vid)} title="Logbook, hours and badges for this pilot">
+            <IconUser size={15} /> Pilot profile &amp; logbook
+          </button>
+        )}
       </details>
 
       <details className="fold">

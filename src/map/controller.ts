@@ -58,7 +58,6 @@ export class MapController {
   private styleTimer = 0;
   private track: TrackPoint[] | null = null;
   private taxi: TaxiRoute | null = null;
-  private logRoute: [number, number, number][] | null = null;
   private hoverFrame = 0;
   private destroyed = false;
   private cb: MapCallbacks;
@@ -82,6 +81,7 @@ export class MapController {
       touchPitch: false,
       fadeDuration: 0,
     });
+    if (location.search.includes('mapdebug')) (window as unknown as { __map: MLMap }).__map = this.map;
     this.map.setStyle(styleFor(this.styleId), { diff: false, transformStyle: (_p, n) => this.transform(n) });
     this.map.touchZoomRotate.disableRotation();
     this.popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 14, className: 'map-tip', maxWidth: '260px' });
@@ -339,6 +339,14 @@ export class MapController {
     m.addLayer({ id: 'trail-casing', type: 'line', source: 'trail', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': dark ? 'rgba(3,6,12,0.75)' : 'rgba(255,255,255,0.9)', 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 5, 14, 7] } });
     m.addLayer({ id: 'trail-line', type: 'line', source: 'trail', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#33b1ff', 'line-gradient': ['interpolate', ['linear'], ['line-progress'], 0, '#f2e94e', 1, '#2f7bff'], 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 2.6, 14, 4] } });
     this.trailGradientSig = '';
+    // Traffic alerts (ATC desk): a red link between the two aircraft and a ring on each.
+    src('conflicts');
+    src('conflict-lines');
+    src('conflict-labels');
+    m.addLayer({ id: 'conflict-link', type: 'line', source: 'conflict-lines', layout: { 'line-cap': 'round' }, paint: { 'line-color': ['case', ['==', ['get', 'level'], 'now'], '#ff4d4d', '#ffb547'], 'line-width': 2, 'line-dasharray': [1.5, 1.5] } });
+    m.addLayer({ id: 'conflict-ring', type: 'circle', source: 'conflicts', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 9, 10, 16], 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-width': 2.5, 'circle-stroke-color': ['case', ['==', ['get', 'level'], 'now'], '#ff4d4d', '#ffb547'] } });
+    m.addLayer({ id: 'conflict-label', type: 'symbol', source: 'conflict-labels', minzoom: 7, layout: { 'text-offset': [0, -1], 'text-field': ['get', 'label'], 'text-font': FONT_BOLD, 'text-size': 11, 'text-allow-overlap': true }, paint: { 'text-color': ['case', ['==', ['get', 'level'], 'now'], '#ffb3b3', '#ffd89a'], 'text-halo-color': 'rgba(0,0,0,0.85)', 'text-halo-width': 1.6 } });
+
     // A past flight picked in the logbook.
     src('logroute', EMPTY, { lineMetrics: true });
     m.addLayer({ id: 'log-casing', type: 'line', source: 'logroute', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': dark ? 'rgba(3,6,12,0.75)' : 'rgba(255,255,255,0.9)', 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 5, 14, 7] } });
@@ -409,32 +417,67 @@ export class MapController {
     this.pushTails();
     this.pushTaxi();
     this.pushLogRoute();
+    this.pushConflicts();
   }
 
-  /** Route of a logged flight: [lon, lat, altitude in hundreds of feet]. */
-  setLogRoute(r: { route: [number, number, number][]; dep?: string | null; arr?: string | null } | null) {
-    this.logRoute = r?.route ?? null;
-    this.logEnds = r ? [r.dep ?? '', r.arr ?? ''] : ['', ''];
+  private conflicts: { a: string; b: string; pa: [number, number]; pb: [number, number]; level: string; hNm: number; vFt: number; inSec: number }[] = [];
+  setConflicts(list: { a: string; b: string; pa: [number, number]; pb: [number, number]; level: string; hNm: number; vFt: number; inSec: number }[]) {
+    this.conflicts = list;
+    this.pushConflicts();
+  }
+  private conflictPushed = 0;
+  private pushConflicts() {
+    this.conflictPushed = Date.now();
+    const features: GeoJSON.Feature[] = [];
+    const lines: GeoJSON.Feature[] = [];
+    const labels: GeoJSON.Feature[] = [];
+    const now = Date.now();
+    const at = (cs: string, fallback: [number, number]) => {
+      const f = this.flights.find((x) => x.callsign === cs);
+      return f ? this.pos(f, now) : fallback; // follow the aircraft as they move between updates
+    };
+    for (const c0 of this.conflicts) {
+      const c = { ...c0, pa: at(c0.a, c0.pa), pb: at(c0.b, c0.pb) };
+      const label = c.level === 'now' ? `${c.hNm} NM · ${c.vFt} ft` : `in ${Math.round(c.inSec)} s · ${c.hNm} NM`;
+      lines.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [c.pa, c.pb] }, properties: { level: c.level } });
+      labels.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [(c.pa[0] + c.pb[0]) / 2, (c.pa[1] + c.pb[1]) / 2] }, properties: { level: c.level, label } });
+      features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: c.pa }, properties: { level: c.level } });
+      features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: c.pb }, properties: { level: c.level } });
+    }
+    this.set('conflicts', { type: 'FeatureCollection', features } as FC);
+    this.set('conflict-lines', { type: 'FeatureCollection', features: lines } as FC);
+    this.set('conflict-labels', { type: 'FeatureCollection', features: labels } as FC);
+  }
+
+  /** Logged flights: [lon, lat, altitude in hundreds of feet]. One route is coloured by altitude; several are drawn together. */
+  setLogRoute(v: { routes: { route: [number, number, number][]; dep?: string | null; arr?: string | null }[] } | null) {
+    this.logRoutes = v?.routes.filter((r) => r.route.length >= 2) ?? [];
     this.pushLogRoute();
   }
-  private logEnds: [string, string] = ['', ''];
+  private logRoutes: { route: [number, number, number][]; dep?: string | null; arr?: string | null }[] = [];
   private pushLogRoute() {
-    const r = this.logRoute;
-    if (!r || r.length < 2) {
+    const rs = this.logRoutes;
+    if (!rs.length) {
       this.set('logroute', EMPTY);
       return;
     }
-    const pts = smoothPath(unwrap(r.map((p) => [p[0], p[1]] as [number, number])));
-    const raw = unwrap(r.map((p) => [p[0], p[1]] as [number, number]));
-    this.set('logroute', {
-      type: 'FeatureCollection',
-      features: [
-        { type: 'Feature', geometry: { type: 'LineString', coordinates: pts }, properties: {} },
-        { type: 'Feature', geometry: { type: 'Point', coordinates: raw[0] }, properties: { icao: this.logEnds[0] } },
-        { type: 'Feature', geometry: { type: 'Point', coordinates: raw[raw.length - 1] }, properties: { icao: this.logEnds[1] } },
-      ],
-    });
-    if (this.map.getLayer('log-line')) this.map.setPaintProperty('log-line', 'line-gradient', this.trailGradient(raw, r.map((p) => p[2] * 100)));
+    const features: GeoJSON.Feature[] = [];
+    const ends = new Map<string, [number, number]>();
+    for (const r of rs) {
+      const raw = unwrap(r.route.map((p) => [p[0], p[1]] as [number, number]));
+      features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: smoothPath(raw) }, properties: {} });
+      if (r.dep) ends.set(r.dep, raw[0]);
+      if (r.arr) ends.set(r.arr, raw[raw.length - 1]);
+    }
+    for (const [icao, c] of ends) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: c }, properties: { icao } });
+    this.set('logroute', { type: 'FeatureCollection', features } as FC);
+    if (!this.map.getLayer('log-line')) return;
+    if (rs.length === 1) {
+      const r = rs[0].route;
+      this.map.setPaintProperty('log-line', 'line-gradient', this.trailGradient(unwrap(r.map((p) => [p[0], p[1]] as [number, number])), r.map((p) => p[2] * 100)));
+    } else {
+      this.map.setPaintProperty('log-line', 'line-gradient', ['interpolate', ['linear'], ['line-progress'], 0, '#35d6b4', 1, '#2f7bff'] as unknown as ExpressionSpecification);
+    }
   }
 
   private pushTaxi() {
@@ -930,6 +973,7 @@ export class MapController {
         this.map.easeTo({ center: to, duration: zoom >= 9 ? 480 : 980, easing: (t) => t, padding: this.padding() });
       }
       this.pushAircraft();
+      if (this.conflicts.length && Date.now() - this.conflictPushed > 1500) this.pushConflicts();
       if (zoom >= 3.5) this.pushTails(); // keep tails attached to the moving aircraft
       if (f && !f.onGround) this.pushRoute();
     }

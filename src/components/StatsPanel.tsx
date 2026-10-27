@@ -6,6 +6,7 @@ import { selectAirport } from '../lib/actions';
 import { Panel, Section } from './ui';
 import { BarList, Stat, TimeLine } from './charts';
 import { IconGauge } from './Icons';
+import { Leaderboard } from './Leaderboard';
 
 const POS_NAME: Record<string, string> = { DEL: 'Delivery', GND: 'Ground', TWR: 'Tower', APP: 'Approach', DEP: 'Departure', CTR: 'Centre', FSS: 'Flight service', RMP: 'Ramp', OTHER: 'Other' };
 const hhmm = (t: number) => new Date(t).toISOString().slice(11, 16) + 'Z';
@@ -16,6 +17,7 @@ export function StatsPanel() {
   const controllers = useStore((s) => s.controllers);
   const [hist, setHist] = useState<NetHistory | null>(null);
   const [histErr, setHistErr] = useState<string | null>(null);
+  const [tab, setTab] = useState<'network' | 'leaders'>('network');
 
   useEffect(() => {
     const ac = new AbortController();
@@ -53,7 +55,16 @@ export function StatsPanel() {
   const peak = series.length ? series.reduce((a, b) => (b.v > a.v ? b : a)) : null;
 
   return (
-    <Panel side="left" label="Network stats" icon={<IconGauge size={20} />} title="Network stats" sub="IVAO right now" onClose={() => useStore.getState().setPanel(null)}>
+    <Panel side="left" label="Network stats" icon={<IconGauge size={20} />} title="Stats" sub={tab === 'network' ? 'IVAO right now' : 'Weekly leaderboards'} onClose={() => useStore.getState().setPanel(null)}>
+      <div className="tabs" role="tablist">
+        <button role="tab" aria-selected={tab === 'network'} className={tab === 'network' ? 'on' : ''} onClick={() => setTab('network')}>
+          Network
+        </button>
+        <button role="tab" aria-selected={tab === 'leaders'} className={tab === 'leaders' ? 'on' : ''} onClick={() => setTab('leaders')}>
+          Leaderboards
+        </button>
+      </div>
+      {tab === 'leaders' ? <Leaderboard /> : <>
       <div className="stats-row">
         <Stat k="Pilots" v={s.total} sub={`${s.air} flying · ${s.ground} on ground`} />
         <Stat k="ATC" v={controllers.length} sub="stations online" />
@@ -76,6 +87,7 @@ export function StatsPanel() {
         <BarList rows={s.topTypes} empty="No aircraft types filed yet." />
       </Section>
       <p className="fineprint">Live counts from IVAO’s public feed; history is sampled every 10 minutes by the WebEye recorder.</p>
+      </>}
     </Panel>
   );
 }

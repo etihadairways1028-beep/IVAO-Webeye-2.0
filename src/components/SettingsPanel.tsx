@@ -60,7 +60,7 @@ export function SettingsPanel() {
       <div className="pop-label">Appearance</div>
       <Seg label="Theme" value={prefs.theme} onChange={(theme) => setPrefs({ theme })} options={[{ value: 'system', label: 'Match device' }, { value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }]} />
       <Seg label="Panel style" value={prefs.glass ? 'glass' : 'solid'} onChange={(v) => setPrefs({ glass: v === 'glass' })} options={[{ value: 'glass', label: 'Liquid glass' }, { value: 'solid', label: 'Solid' }]} />
-      <p className="fineprint">Liquid glass lets the map show through the panels. Choose Solid on slower computers.</p>
+      <p className="fineprint">Liquid glass floats clear, frosted panels over the map. Choose Solid on slower computers or if text is hard to read.</p>
 
       <div className="pop-label">Transition altitude</div>
       <Seg

@@ -2179,62 +2179,168 @@ table.navlog {
 .t-cross .t-ico, .t-cross .t-text { color: #ffb27d; }
 .t-end .t-ico { color: #ff6b6b; }
 
-/* ───────── Liquid glass (Settings → Appearance). ~60% opaque frosted panels with a
-   specular edge; the map runs underneath the bars so it shows through. */
+/* ───────── Liquid glass (Settings → Appearance).
+   Floating, rounded panes of clear glass over the map: strong blur and saturation, a bright
+   rim that catches the light top-left, a soft specular sheen, and depth from layered shadows. */
 html[data-glass='1'] {
-  --glass-fill: linear-gradient(160deg, rgba(36, 48, 72, 0.6) 0%, rgba(16, 22, 36, 0.6) 55%, rgba(12, 18, 30, 0.62) 100%);
-  --glass-edge: rgba(255, 255, 255, 0.13);
-  --glass-shine: inset 0 1px 0 rgba(255, 255, 255, 0.16), inset 1px 0 0 rgba(255, 255, 255, 0.05), inset 0 -1px 0 rgba(0, 0, 0, 0.28);
-  --glass-blur: blur(20px) saturate(175%);
-  --surface-2: rgba(255, 255, 255, 0.055);
-  --surface-3: rgba(255, 255, 255, 0.1);
-  --line: rgba(255, 255, 255, 0.09);
-  --line-2: rgba(255, 255, 255, 0.16);
+  --gap: 10px;
+  --glass-fill: linear-gradient(155deg, rgba(58, 76, 104, 0.34) 0%, rgba(22, 30, 46, 0.32) 48%, rgba(14, 20, 32, 0.4) 100%);
+  --glass-edge: rgba(255, 255, 255, 0.16);
+  --glass-rim: linear-gradient(140deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.16) 18%, rgba(255, 255, 255, 0.03) 45%, rgba(255, 255, 255, 0.05) 70%, rgba(255, 255, 255, 0.32) 100%);
+  --glass-sheen: radial-gradient(120% 60% at 0% 0%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0) 22%);
+  --glass-shine: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+  --glass-depth: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 24px rgba(0, 0, 0, 0.28), 0 28px 60px rgba(0, 0, 0, 0.3);
+  --glass-blur: blur(26px) saturate(210%) brightness(1.06);
+  --glass-r: 22px;
+  --surface-2: rgba(255, 255, 255, 0.07);
+  --surface-3: rgba(255, 255, 255, 0.13);
+  --line: rgba(255, 255, 255, 0.1);
+  --line-2: rgba(255, 255, 255, 0.18);
   /* brighter secondary text so it stays readable over light maps seen through the glass */
-  --ink-2: #d3dbea;
-  --dim: #aab6cb;
-  --faint: #8e9bb3;
+  --ink-2: #dce3f0;
+  --dim: #b4bfd2;
+  --faint: #93a0b8;
 }
 html[data-glass='1'] :is(.panel, .popover, .topbar, .rail, .telebar) {
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 html[data-glass='1'] .map {
   inset: 0;
 }
 html[data-glass='1'] :is(.topbar, .rail, .panel, .popover, .mapctl-group, .telebar, .toast, .banner, .glass, .splash) {
-  background: var(--glass-fill);
+  background: var(--glass-sheen), var(--glass-fill);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
-  box-shadow: var(--glass-shine), 0 12px 36px rgba(0, 0, 0, 0.32);
+  box-shadow: var(--glass-shine), var(--glass-depth);
+  border: 0;
+  isolation: isolate;
+}
+/* Rim light: a 1px gradient border drawn with a mask, so it follows any corner radius. */
+html[data-glass='1'] :is(.topbar, .rail, .panel, .popover, .mapctl-group, .telebar, .toast, .banner, .chart-chip)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--glass-rim);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+  z-index: 3;
 }
 html[data-glass='1'] :is(.popover, .mapctl-group, .toast, .banner) {
-  border: 1px solid var(--glass-edge);
-  border-radius: 14px;
+  border-radius: 18px;
 }
-html[data-glass='1'] .topbar {
-  border-bottom: 1px solid var(--glass-edge);
+html[data-glass='1'] :is(.input, .chip, .kv, .sq-live, .stat, .log-row, .ess) {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
-html[data-glass='1'] .rail {
-  border-right: 1px solid var(--glass-edge);
+html[data-glass='1'] :is(.btn, .chip-btn, .rail-btn, .icon-btn, .log-row, .board-row, .bl-row) {
+  transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
-html[data-glass='1'] .panel-left {
-  border-right: 1px solid var(--glass-edge);
+html[data-glass='1'] :is(.chip-btn, .icon-btn):hover {
+  background: rgba(255, 255, 255, 0.12);
 }
-html[data-glass='1'] .panel-right {
-  border-left: 1px solid var(--glass-edge);
-}
-html[data-glass='1'] :is(.input, .chip, .kv, .sq-live) {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.1);
+html[data-glass='1'] .btn {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 html[data-glass='1'] .rail-btn.on {
-  background: var(--accent-bg);
-  box-shadow: inset 0 0 0 1px var(--accent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 30%, transparent), color-mix(in srgb, var(--accent) 12%, transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  color: var(--ink);
 }
 html[data-glass='1'] .maplibregl-ctrl-attrib {
-  background: rgba(10, 14, 21, 0.45) !important;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  background: rgba(10, 14, 21, 0.4) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  backdrop-filter: blur(12px) saturate(180%);
+  border-radius: 999px;
+}
+
+/* Floating layout on wider screens: every pane sits off the edges with rounded corners. */
+@media (min-width: 760px) {
+  html[data-glass='1'] .topbar {
+    top: var(--gap);
+    left: var(--gap);
+    right: var(--gap);
+    border-radius: 18px;
+  }
+  html[data-glass='1'] .rail {
+    top: calc(var(--top) + var(--gap) * 2);
+    left: var(--gap);
+    bottom: auto;
+    padding: 6px 0;
+    border-radius: var(--glass-r);
+    overflow: hidden;
+  }
+  html[data-glass='1'] .rail-btn {
+    margin: 0 6px;
+    border-radius: 14px;
+  }
+  html[data-glass='1'] .panel {
+    top: calc(var(--top) + var(--gap) * 2);
+    bottom: var(--gap);
+    border-radius: var(--glass-r);
+    overflow: hidden;
+  }
+  html[data-glass='1'] .panel-left {
+    left: calc(var(--rail) + var(--gap) * 2);
+  }
+  html[data-glass='1'] .panel-right {
+    right: var(--gap);
+  }
+  html[data-glass='1'] .mapctl {
+    top: calc(var(--top) + var(--gap) * 2);
+    right: calc(var(--gap) + 4px);
+  }
+  html[data-glass='1'] .has-right .mapctl {
+    right: calc(var(--panel) + var(--gap) * 2 + 4px);
+  }
+  html[data-glass='1'] .popover {
+    top: calc(var(--top) + var(--gap) * 2);
+    right: var(--gap);
+  }
+  html[data-glass='1'] .telebar {
+    bottom: var(--gap);
+    left: calc(var(--rail) + var(--gap) * 2);
+    right: var(--gap);
+    border-radius: 18px;
+    overflow: hidden;
+  }
+  html[data-glass='1'] .has-left .telebar {
+    left: calc(var(--rail) + var(--panel) + var(--gap) * 3);
+  }
+  html[data-glass='1'] .has-left:has(.panel-left.wide) .telebar {
+    left: calc(var(--rail) + 470px + var(--gap) * 3);
+  }
+  html[data-glass='1'] .has-right .telebar {
+    right: calc(var(--panel) + var(--gap) * 2);
+  }
+}
+/* Phones: the tab bar and bottom sheets float too. */
+@media (max-width: 759px) {
+  html[data-glass='1'] .rail {
+    left: 8px;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    height: 62px;
+    padding: 0;
+    border-radius: 22px;
+    overflow: hidden;
+  }
+  html[data-glass='1'] :is(.panel, .panel-left, .panel-left.wide) {
+    left: 6px;
+    right: 6px;
+    bottom: calc(78px + env(safe-area-inset-bottom));
+    border-radius: 22px;
+  }
+  html[data-glass='1'] .panel-right {
+    left: 6px;
+    right: 6px;
+    bottom: calc(6px + env(safe-area-inset-bottom));
+    border-radius: 22px;
+  }
 }
 @media (prefers-reduced-transparency: reduce) {
   html[data-glass='1'] {
@@ -2296,20 +2402,24 @@ html[data-film='1'] .maplibregl-ctrl-attrib { opacity: 0.55; }
 
 /* ───────── Light theme details */
 html[data-theme='light'][data-glass='1'] {
-  --glass-fill: linear-gradient(160deg, rgba(255, 255, 255, 0.78), rgba(246, 249, 251, 0.72));
+  --glass-fill: linear-gradient(155deg, rgba(255, 255, 255, 0.62), rgba(244, 248, 251, 0.5) 55%, rgba(236, 242, 247, 0.56));
   --glass-edge: rgba(15, 26, 36, 0.09);
+  --glass-rim: linear-gradient(140deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.5) 25%, rgba(15, 26, 36, 0.06) 55%, rgba(15, 26, 36, 0.1) 80%, rgba(255, 255, 255, 0.8) 100%);
+  --glass-sheen: radial-gradient(120% 60% at 0% 0%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 55%);
   --glass-shine: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -1px 0 rgba(15, 26, 36, 0.05);
+  --glass-depth: 0 1px 2px rgba(15, 26, 36, 0.08), 0 10px 24px rgba(15, 26, 36, 0.1), 0 26px 56px rgba(15, 26, 36, 0.12);
+  --glass-blur: blur(26px) saturate(190%) brightness(1.04);
   --surface-2: rgba(15, 26, 36, 0.045);
   --surface-3: rgba(15, 26, 36, 0.08);
   --line: rgba(15, 26, 36, 0.09);
   --line-2: rgba(15, 26, 36, 0.16);
-  --ink-2: #33424f;
-  --dim: #5a6a79;
-  --faint: #8b99a6;
+  --ink-2: #2b3a47;
+  --dim: #4f5f6e;
+  --faint: #7f8e9b;
 }
 html[data-theme='light'] :is(.panel, .popover, .topbar, .rail, .telebar) { text-shadow: none !important; }
-html[data-theme='light'][data-glass='1'] :is(.topbar, .rail, .panel, .popover, .mapctl-group, .telebar, .toast, .banner, .glass, .splash) { box-shadow: var(--glass-shine), 0 10px 30px rgba(15, 26, 36, 0.12); }
-html[data-theme='light'][data-glass='1'] :is(.input, .chip, .kv, .sq-live) { background: rgba(15, 26, 36, 0.04); border-color: rgba(15, 26, 36, 0.1); }
+html[data-theme='light'][data-glass='1'] :is(.input, .chip, .kv, .sq-live, .stat, .log-row, .ess) { background: rgba(255, 255, 255, 0.45); border-color: rgba(15, 26, 36, 0.1); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9); }
+html[data-theme='light'][data-glass='1'] :is(.chip-btn, .icon-btn):hover { background: rgba(15, 26, 36, 0.06); }
 html[data-theme='light'] .chip.rwy { background: #1f2a36; color: #fff; }
 html[data-theme='light'] .chip.twy { background: #fff6d6; color: #7a5a00; border-color: rgba(194, 140, 0, 0.35); }
 html[data-theme='light'] :is(.desk-route .mono, .incoming-line .mono, .taxi-next strong) { color: #0b6b4a; }
@@ -2562,4 +2672,231 @@ button.bl-row:hover,
 }
 .log-rate {
   color: var(--ink);
+}
+
+/* ───────── Leaderboards, profile, badges, WebEye Link */
+.board-seg {
+  margin: 4px 0 6px;
+}
+.seg-note {
+  margin: 0 0 10px;
+}
+.board {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.board-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.board-row:hover {
+  background: var(--surface-3);
+}
+.board-row.me {
+  box-shadow: inset 3px 0 0 var(--accent);
+  background: var(--accent-bg);
+}
+.board-rank {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  color: var(--dim);
+  border: 1px solid var(--line-2);
+}
+.board-rank.top {
+  color: var(--ink);
+  font-weight: 600;
+}
+.board-rank.top1 {
+  border-color: #e8c25a;
+  box-shadow: 0 0 0 1px #e8c25a inset;
+}
+.board-rank.top2 {
+  border-color: #b9c3cc;
+  box-shadow: 0 0 0 1px #b9c3cc inset;
+}
+.board-rank.top3 {
+  border-color: #c9895a;
+  box-shadow: 0 0 0 1px #c9895a inset;
+}
+.board-who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.board-val {
+  font-size: 13px;
+  color: var(--ink);
+}
+.badges {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.badges li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: 10px 6px 9px;
+  border-radius: 10px;
+  border: 1px dashed var(--line-2);
+  opacity: 0.6;
+  min-width: 0;
+}
+.badges li.earned {
+  opacity: 1;
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%);
+}
+.bdg-ico {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--dim);
+  background: var(--surface-2);
+}
+.badges li.earned .bdg-ico {
+  color: var(--on-accent);
+  background: var(--accent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.bdg-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.bdg-sub {
+  font-size: 10.5px;
+  line-height: 1.3;
+}
+.link-card {
+  margin: 4px 0 14px;
+  padding: 12px 13px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 75%);
+}
+.link-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.link-card p {
+  margin: 6px 0 10px;
+}
+.link-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.link-card a.btn {
+  text-decoration: none;
+}
+.log-rate.sim {
+  color: var(--accent-ink);
+}
+.sim-tag {
+  font-style: normal;
+  font-size: 9.5px;
+  margin-left: 5px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--on-accent);
+  vertical-align: 1px;
+}
+.log-td {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  color: var(--ink-2);
+  padding-top: 4px;
+  border-top: 1px dashed var(--line);
+}
+html[data-theme='light'] .log-rate.sim {
+  color: #0f766e;
+}
+
+/* ───────── ATC traffic alerts */
+.rail-badge.alert {
+  background: #ff4d4d;
+  color: #fff;
+  animation: alertPulse 1.2s ease-in-out infinite;
+}
+@keyframes alertPulse {
+  50% {
+    box-shadow: 0 0 0 5px rgba(255, 77, 77, 0.25);
+  }
+}
+.alerts {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.alert-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  align-items: center;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 181, 71, 0.5);
+  background: rgba(255, 181, 71, 0.1);
+}
+.alert-row.now {
+  border-color: rgba(255, 77, 77, 0.7);
+  background: rgba(255, 77, 77, 0.13);
+}
+.alert-row .alert-tag {
+  grid-row: span 2;
+  font: 600 11px var(--mono);
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: #ffb547;
+  color: #241500;
+}
+.alert-row.now .alert-tag {
+  background: #ff4d4d;
+  color: #fff;
+}
+html[data-glass='1'] .mapctl-group {
+  position: relative;
 }

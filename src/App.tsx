@@ -18,8 +18,10 @@ import { IconAlert, IconHeadset, IconPlane, IconRunway, IconTower, IconUser, Ico
 import { AtcDesk } from './components/AtcDesk';
 import { Logbook } from './components/Logbook';
 import { StatsPanel } from './components/StatsPanel';
+import { Profile } from './components/Profile';
 import { IconClock, IconGauge } from './components/Icons';
 import { usePilotClearance } from './lib/clearance';
+import { useConflictAlerts } from './lib/conflicts';
 import { loadAirports } from './data/airports';
 import { startFeed, retryNow } from './data/feed';
 import { toggleFullscreen } from './lib/actions';
@@ -33,12 +35,13 @@ function NavRail() {
   const plan = useStore((s) => s.plan);
   const incoming = useStore((s) => s.incoming);
   const atcOn = useStore((s) => !!s.atcSession);
+  const alerts = useStore((s) => s.conflicts.length);
   const items: { id: PanelId; label: string; icon: React.ReactNode; badge?: string | number; key: string }[] = [
     { id: 'traffic', label: 'Traffic', icon: <IconPlane size={20} />, key: 'T' },
     { id: 'airports', label: 'Airports', icon: <IconRunway size={20} />, key: 'A' },
     { id: 'atc', label: 'ATC', icon: <IconTower size={20} />, badge: atcN || undefined, key: 'S' },
     { id: 'myflight', label: 'My flight', icon: <IconUser size={20} />, badge: incoming && !incoming.ack ? '1' : myVid || plan ? '•' : undefined, key: 'P' },
-    { id: 'atcdesk', label: 'ATC desk', icon: <IconHeadset size={20} />, badge: atcOn ? '✓' : undefined, key: 'D' },
+    { id: 'atcdesk', label: 'ATC desk', icon: <IconHeadset size={20} />, badge: alerts ? `!${alerts}` : atcOn ? '✓' : undefined, key: 'D' },
     { id: 'logbook', label: 'Logbook', icon: <IconClock size={20} />, key: 'B' },
     { id: 'stats', label: 'Stats', icon: <IconGauge size={20} />, key: 'N' },
   ];
@@ -48,7 +51,7 @@ function NavRail() {
         <button key={it.id} className={`rail-btn ${panel === it.id ? 'on' : ''}`} aria-pressed={panel === it.id} title={`${it.label} (${it.key})`} onClick={() => setPanel(panel === it.id ? null : it.id)}>
           {it.icon}
           <span>{it.label}</span>
-          {it.badge != null && <i className="rail-badge mono">{it.badge}</i>}
+          {it.badge != null && <i className={`rail-badge mono ${String(it.badge).startsWith('!') ? 'alert' : ''}`} title={String(it.badge).startsWith('!') ? 'Traffic alerts' : undefined}>{String(it.badge).replace(/^!/, '')}</i>}
         </button>
       ))}
     </nav>
@@ -173,6 +176,7 @@ export default function App() {
   useShortcuts();
   useShareLinks();
   usePilotClearance();
+  useConflictAlerts();
 
   useEffect(() => {
     loadAirports()
@@ -250,6 +254,7 @@ export default function App() {
       {panel === 'atcdesk' && <AtcDesk />}
       {panel === 'logbook' && <Logbook />}
       {panel === 'stats' && <StatsPanel />}
+      {panel === 'profile' && <Profile />}
       {selFlight && <AircraftDetailsPanel key={selFlight.key} flight={selFlight} />}
       {!selFlight && selAtc && <AtcDetailsPanel key={selAtc.key} c={selAtc} />}
       {selFlight && <TelemetryBar f={selFlight} />}

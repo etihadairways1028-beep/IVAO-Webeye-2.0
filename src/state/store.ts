@@ -6,7 +6,7 @@ import { loadAtcSession, type AtcSession, type Clearance } from '../data/atc';
 
 export type MapStyleId = 'dark' | 'standard' | 'satellite' | 'radar';
 export type LabelMode = 'auto' | 'off' | 'callsign' | 'full';
-export type Panel = 'traffic' | 'airports' | 'atc' | 'myflight' | 'atcdesk' | 'logbook' | 'stats';
+export type Panel = 'traffic' | 'airports' | 'atc' | 'myflight' | 'atcdesk' | 'logbook' | 'stats' | 'profile';
 
 export interface Filters {
   wake: WakeCat[]; // empty = all
@@ -100,7 +100,11 @@ interface State {
   assignedSquawk: string;
   chartFocus: string | null;
   /** A logged flight drawn on the map from the logbook. */
-  logView: { route: [number, number, number][]; dep?: string | null; arr?: string | null; landed: number } | null;
+  logView: { routes: { route: [number, number, number][]; dep?: string | null; arr?: string | null }[]; landed?: number } | null;
+  /** Pilot whose profile is open. */
+  profileVid: number | null;
+  /** Traffic alerts for a verified controller. */
+  conflicts: import('../lib/conflicts').Conflict[];
   atcSession: AtcSession | null;
   incoming: Clearance | null;
 
@@ -146,6 +150,8 @@ export const useStore = create<State>((set, get) => ({
   assignedSquawk: '',
   chartFocus: null,
   logView: null,
+  profileVid: null,
+  conflicts: [],
   atcSession: loadAtcSession(),
   incoming: null,
 

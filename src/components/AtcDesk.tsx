@@ -1,3 +1,4 @@
+import { ALERT_SOUND_KEY, type Conflict } from '../lib/conflicts';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useStore } from '../state/store';
 import { getAirport } from '../data/airports';
@@ -9,7 +10,7 @@ import { selectFlight, copyText } from '../lib/actions';
 import { distanceNm } from '../lib/geo';
 import { ago, fmtFreq } from '../lib/format';
 import { Badge, Panel, Section } from './ui';
-import { IconCopy, IconHeadset, IconPlane, IconX } from './Icons';
+import { IconAlert, IconCopy, IconHeadset, IconPlane, IconX } from './Icons';
 import type { Flight } from '../types';
 
 const AIRPORT_POS = new Set(['DEL', 'GND', 'TWR', 'APP', 'DEP', 'RMP']);
@@ -201,6 +202,8 @@ function Controlling() {
         </button>
       </div>
 
+      <TrafficAlerts />
+
       {picked ? (
         <SendForm key={picked.key} flight={picked} icao={icao} canTaxi={TAXI_POS.has(session.position)} last={lastFor(picked.callsign)} onClose={() => { setPick(null); useStore.setState({ taxi: null }); }} />
       ) : (
@@ -386,6 +389,63 @@ function SendForm({ flight, icao, canTaxi, last, onClose }: { flight: Flight; ic
       {msg && <p className={msg.ok ? 'ok-text small' : 'warn small'}>{msg.text}</p>}
       {last && <p className="dim small">Last sent {ago(last.at)}{last.ack ? ` · wilco ${ago(last.ack)}` : ' · waiting for wilco'}.</p>}
       <p className="fineprint">This is a visual aid: always give the clearance on frequency as well. The pilot sees it in WebEye under My flight.</p>
+    </Section>
+  );
+}
+
+/** Current and predicted losses of separation in your area. */
+function TrafficAlerts() {
+  const conflicts = useStore((s) => s.conflicts);
+  const [sound, setSound] = useState(() => {
+    try {
+      return localStorage.getItem(ALERT_SOUND_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggle = () => {
+    const v = !sound;
+    setSound(v);
+    try {
+      localStorage.setItem(ALERT_SOUND_KEY, v ? '1' : '0');
+    } catch {
+      /* storage blocked */
+    }
+  };
+  const show = (c: Conflict) => {
+    const st = useStore.getState();
+    st.camera_({ type: 'fit', bounds: [[Math.min(c.pa[0], c.pb[0]), Math.min(c.pa[1], c.pb[1])], [Math.max(c.pa[0], c.pb[0]), Math.max(c.pa[1], c.pb[1])]], maxZoom: 10 });
+  };
+  return (
+    <Section
+      title="Traffic alerts"
+      icon={<IconAlert size={15} />}
+      aside={
+        <button className={`chip-btn small ${sound ? 'on' : ''}`} aria-pressed={sound} onClick={toggle} title="Play a chime for new alerts">
+          {sound ? 'Sound on' : 'Sound off'}
+        </button>
+      }
+    >
+      {!conflicts.length ? (
+        <p className="ok-text small">No conflicts in your area. WebEye checks every update for aircraft closer than 3 NM (near your field) or 5 NM and 1,000 ft, now or within 2 minutes.</p>
+      ) : (
+        <ul className="alerts">
+          {conflicts.map((c) => (
+            <li key={c.id}>
+              <button className={`alert-row ${c.level}`} onClick={() => show(c)}>
+                <span className="alert-tag">{c.level === 'now' ? 'NOW' : `${Math.round(c.inSec)} s`}</span>
+                <span className="mono strong">
+                  {c.a} · {c.b}
+                </span>
+                <span className="dim small mono">
+                  {c.level === 'now' ? `${c.nowNm} NM · ${c.nowFt} ft apart` : `closest ${c.hNm} NM · ${c.vFt} ft`}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="fineprint">Advisory only: IVAO positions are up to 15 seconds old. Use your radar client for separation.</p>
     </Section>
   );
 }
