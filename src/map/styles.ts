@@ -10,6 +10,8 @@ import type { MapStyleId } from '../state/store';
  *  - Radar: bundled Natural Earth land/borders (public domain) — works offline. */
 
 export const GLYPHS = 'https://tiles.basemaps.cartocdn.com/fonts/{fontstack}/{range}.pbf';
+/** Open Sans glyphs shipped with the app, so our own map styles never depend on a font server. */
+export const LOCAL_GLYPHS = new URL(`${import.meta.env.BASE_URL}fonts/{fontstack}/{range}.pbf`, typeof location !== 'undefined' ? location.href : 'http://localhost/').href.replace('%7Bfontstack%7D', '{fontstack}').replace('%7Brange%7D', '{range}');
 export const FONT_BOLD = ['Open Sans Bold'];
 export const FONT_REG = ['Open Sans Regular'];
 
@@ -27,7 +29,7 @@ export function offlineStyle(kind: 'dark' | 'light'): StyleSpecification {
   const dark = kind === 'dark';
   return {
     version: 8,
-    glyphs: GLYPHS,
+    glyphs: LOCAL_GLYPHS,
     sources: {
       land: { type: 'geojson', data: `${base}data/land.geojson`, attribution: 'Natural Earth (offline basemap)' },
       borders: { type: 'geojson', data: `${base}data/borders.geojson` },
@@ -44,7 +46,7 @@ export function offlineStyle(kind: 'dark' | 'light'): StyleSpecification {
 function radarStyle(): StyleSpecification {
   return {
     version: 8,
-    glyphs: GLYPHS,
+    glyphs: LOCAL_GLYPHS,
     sources: {
       land: { type: 'geojson', data: `${base}data/land.geojson`, attribution: 'Natural Earth' },
       borders: { type: 'geojson', data: `${base}data/borders.geojson` },
@@ -61,7 +63,7 @@ function radarStyle(): StyleSpecification {
 function satelliteStyle(): StyleSpecification {
   return {
     version: 8,
-    glyphs: GLYPHS,
+    glyphs: LOCAL_GLYPHS,
     sources: {
       esri: {
         type: 'raster',

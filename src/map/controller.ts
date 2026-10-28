@@ -9,6 +9,7 @@ import { bearing, circle, destination, distanceNm, greatCircle, smoothPath, unwr
 import { fmtAltShort } from '../lib/format';
 import { fetchMetarsInBox, type RadarFrame, type StationWx } from '../data/weather';
 import { nightPolygon } from '../lib/sun';
+import { accentHex } from '../lib/accent';
 import type { TrackPoint } from '../data/ivao';
 import { planPoints, progressAlong } from '../data/simbrief';
 import { allCharts } from '../data/charts';
@@ -155,7 +156,7 @@ export class MapController {
       this.prefs.colorBy === 'altitude'
         ? (['interpolate', ['linear'], ['get', 'alt'], ...ALT_RAMP.flat()] as unknown as ExpressionSpecification)
         : (['case', ['get', 'gnd'], this.styleId === 'standard' ? '#64748b' : '#7d8aa5', this.baseColor()] as ExpressionSpecification);
-    return ['case', ['get', 'sel'], '#ff4fc3', ['get', 'mine'], '#2fd6b5', ['get', 'friend'], '#b794ff', base];
+    return ['case', ['get', 'sel'], '#ff4fc3', ['get', 'mine'], this.accent(), ['get', 'friend'], '#b794ff', base];
   }
 
   /**
@@ -211,7 +212,8 @@ export class MapController {
     const radar = this.styleId === 'radar';
     mk('box', radar ? 'rgba(2,10,6,0.88)' : 'rgba(8,13,24,0.88)', radar ? 'rgba(90,200,140,0.45)' : 'rgba(120,145,190,0.45)');
     mk('box-sel', 'rgba(40,6,30,0.92)', '#ff4fc3');
-    mk('box-mine', 'rgba(4,30,26,0.92)', '#2fd6b5');
+    if (m.hasImage('box-mine')) m.removeImage('box-mine');
+    mk('box-mine', 'rgba(8,13,24,0.92)', this.accent());
     for (const [k, col] of Object.entries(ATC_COLORS)) mk(`atc-${k}`, 'rgba(8,13,24,0.92)', col);
     mk('twy-box', '#f2c94c', '#141005');
   }
@@ -308,13 +310,14 @@ export class MapController {
     m.addLayer({ id: 'airport-labels', type: 'symbol', source: 'airports', layout: { visibility: this.vis('airports'), 'text-field': ['get', 'icao'], 'text-font': FONT_REG, 'text-size': 10, 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true }, filter: ['any', ['all', ['>=', ['get', 'size'], 3], ['>=', ['zoom'], 5]], ['all', ['>=', ['get', 'size'], 2], ['>=', ['zoom'], 7.5]], ['>=', ['zoom'], 10]], paint: { 'text-color': dark ? '#7f8db0' : '#475569', 'text-halo-color': halo, 'text-halo-width': 1 } });
 
     src('atc');
+    src('atc-lbl'); // labels on their own source: a font failure can never hide the stations
     m.addLayer({ id: 'atc', type: 'circle', source: 'atc', layout: { visibility: this.vis('atc') }, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 5, 8, 9], 'circle-color': ['get', 'color'], 'circle-opacity': 0.25, 'circle-stroke-color': ['get', 'color'], 'circle-stroke-width': ['case', ['get', 'sel'], 3.5, 2.5] } });
     // Station badge: ICAO + one coloured tag per online position (ATC-client style).
     const tag = (i: number) => [' ', {}, ['coalesce', ['get', `p${i}`], ''], { 'text-color': ['coalesce', ['get', `c${i}`], '#ffffff'], 'font-scale': 0.9 }];
     m.addLayer({
       id: 'atc-labels',
       type: 'symbol',
-      source: 'atc',
+      source: 'atc-lbl',
       minzoom: 2.6,
       layout: {
         visibility: this.vis('atc'),
@@ -375,20 +378,21 @@ export class MapController {
     src('logroute', EMPTY, { lineMetrics: true });
     m.addLayer({ id: 'log-casing', type: 'line', source: 'logroute', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': dark ? 'rgba(3,6,12,0.75)' : 'rgba(255,255,255,0.9)', 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 5, 14, 7] } });
     m.addLayer({ id: 'log-line', type: 'line', source: 'logroute', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#33b1ff', 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 2.6, 14, 4] } });
-    m.addLayer({ id: 'log-ends', type: 'circle', source: 'logroute', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 5, 'circle-color': dark ? '#0b1222' : '#fff', 'circle-stroke-color': '#14b8a6', 'circle-stroke-width': 2 } });
+    m.addLayer({ id: 'log-ends', type: 'circle', source: 'logroute', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 5, 'circle-color': dark ? '#0b1222' : '#fff', 'circle-stroke-color': this.accent(), 'circle-stroke-width': 2 } });
     m.addLayer({ id: 'log-end-labels', type: 'symbol', source: 'logroute', filter: ['==', ['geometry-type'], 'Point'], layout: { 'text-field': ['get', 'icao'], 'text-font': FONT_BOLD, 'text-size': 11.5, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-allow-overlap': true }, paint: { 'text-color': dark ? '#e8eef3' : '#0f172a', 'text-halo-color': halo, 'text-halo-width': 1.5 } });
     m.addLayer({ id: 'route-ends', type: 'circle', source: 'route', filter: ['==', ['get', 'kind'], 'end'], paint: { 'circle-radius': 5, 'circle-color': dark ? '#0b1222' : '#fff', 'circle-stroke-color': ROUTE_COLORS.flown, 'circle-stroke-width': 2 } });
     m.addLayer({ id: 'route-end-labels', type: 'symbol', source: 'route', filter: ['==', ['get', 'kind'], 'end'], layout: { 'text-field': ['get', 'icao'], 'text-font': FONT_BOLD, 'text-size': 11.5, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-allow-overlap': true }, paint: { 'text-color': '#ffb3e6', 'text-halo-color': halo, 'text-halo-width': 1.5 } });
 
     // Short fading tails behind every aircraft: shows where each one has just been.
     src('tails');
-    m.addLayer({ id: 'tails', type: 'line', source: 'tails', minzoom: 3.5, layout: { visibility: this.styleId !== 'radar' && this.prefs.layers.trails ? 'visible' : 'none', 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['case', ['get', 'mine'], '#2fd6b5', dark ? '#8fb3ea' : '#475569'], 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1.4, 9, 2.4], 'line-opacity': 0.6 } });
+    m.addLayer({ id: 'tails', type: 'line', source: 'tails', minzoom: 3.5, layout: { visibility: this.styleId !== 'radar' && this.prefs.layers.trails ? 'visible' : 'none', 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['case', ['get', 'mine'], this.accent(), dark ? '#8fb3ea' : '#475569'], 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1.4, 9, 2.4], 'line-opacity': 0.6 } });
 
     src('history');
     m.addLayer({ id: 'history', type: 'circle', source: 'history', layout: { visibility: this.styleId === 'radar' && this.prefs.layers.trails ? 'visible' : 'none' }, paint: { 'circle-radius': 1.4, 'circle-color': '#7cf2b4', 'circle-opacity': ['get', 'o'] } });
 
     src('aircraft');
-    m.addLayer({ id: 'sel-halo', type: 'circle', source: 'aircraft', filter: ['any', ['get', 'sel'], ['get', 'mine']], paint: { 'circle-radius': 17, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': ['case', ['get', 'sel'], '#ff4fc3', '#2fd6b5'], 'circle-stroke-width': 1.5 } });
+    src('aircraft-lbl');
+    m.addLayer({ id: 'sel-halo', type: 'circle', source: 'aircraft', filter: ['any', ['get', 'sel'], ['get', 'mine']], paint: { 'circle-radius': 17, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': ['case', ['get', 'sel'], '#ff4fc3', this.accent()], 'circle-stroke-width': 1.5 } });
     m.addLayer({
       id: 'aircraft',
       type: 'symbol',
@@ -412,7 +416,7 @@ export class MapController {
     m.addLayer({
       id: 'aircraft-labels',
       type: 'symbol',
-      source: 'aircraft',
+      source: 'aircraft-lbl',
       layout: {
         'text-field': this.labelExpr(this.prefs.labels),
         'text-font': FONT_BOLD,
@@ -615,7 +619,9 @@ export class MapController {
         friend: this.friendSet.has(f.vid),
       },
     }));
-    this.set('aircraft', { type: 'FeatureCollection', features });
+    const fc: FC = { type: 'FeatureCollection', features };
+    this.set('aircraft', fc);
+    this.set('aircraft-lbl', fc); // labels separately: a font failure can never hide the aircraft
   }
 
   /**
@@ -767,6 +773,7 @@ export class MapController {
       void k;
     }
     this.set('atc', { type: 'FeatureCollection', features: points });
+    this.set('atc-lbl', { type: 'FeatureCollection', features: points });
     this.set('atc-rings', { type: 'FeatureCollection', features: rings });
   }
 
@@ -1011,9 +1018,21 @@ export class MapController {
     this.set('measure', { type: 'FeatureCollection', features: shapes } as FC);
     this.set('measure-labels', { type: 'FeatureCollection', features: labels } as FC);
   }
+  /** Interface accent colour, for "my flight" highlights on the map. */
+  private accent() {
+    return accentHex(this.prefs.accent, this.styleId === 'standard');
+  }
   setPrefs(p: Prefs) {
     const prev = this.prefs;
     this.prefs = p;
+    if (prev.accent !== p.accent && this.map.getLayer('aircraft')) {
+      const m = this.map;
+      m.setPaintProperty('aircraft', 'icon-color', this.aircraftColor());
+      if (m.getLayer('tails')) m.setPaintProperty('tails', 'line-color', ['case', ['get', 'mine'], this.accent(), this.styleId !== 'standard' ? '#8fb3ea' : '#475569']);
+      if (m.getLayer('sel-halo')) m.setPaintProperty('sel-halo', 'circle-stroke-color', ['case', ['get', 'sel'], '#ff4fc3', this.accent()]);
+      if (m.getLayer('log-ends')) m.setPaintProperty('log-ends', 'circle-stroke-color', this.accent());
+      this.addLabelBoxes();
+    }
     if (prev.friends !== p.friends) {
       this.friendSet = new Set(p.friends.map((f) => f.vid));
       this.pushAircraft();

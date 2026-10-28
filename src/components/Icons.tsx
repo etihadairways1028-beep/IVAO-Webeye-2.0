@@ -215,7 +215,7 @@ export const IconInfo = (p: P) => (
 );
 export const IconLogo = ({ size = 28 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-    <rect width="32" height="32" rx="6" fill="#14b8a6" />
+    <rect width="32" height="32" rx="6" style={{ fill: 'var(--accent)' }} />
     <path d="M16 5.5l1.9 7.2 7.6 3.6v1.9l-7.6-2.1-.5 5.4 2.5 1.9v1.5L16 23.8l-3.9 1.1v-1.5l2.5-1.9-.5-5.4-7.6 2.1v-1.9l7.6-3.6z" fill="#fff" />
   </svg>
 );

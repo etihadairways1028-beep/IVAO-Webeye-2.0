@@ -657,7 +657,7 @@ kbd,
   font: 600 10px var(--mono);
 }
 .badge-teal {
-  background: rgba(47, 214, 181, 0.14);
+  background: var(--accent-bg);
   color: var(--teal);
 }
 .badge-red {
@@ -2158,7 +2158,7 @@ table.navlog {
 .clr-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .clr-field { display: grid; gap: 4px; }
 .sq-live { height: 36px; display: grid; place-items: center start; padding: 0 12px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line); font-size: 16px; font-weight: 600; }
-.sq-live.ok { border-color: #2fd6b5; color: #6ff2d6; }
+.sq-live.ok { border-color: var(--accent); color: var(--accent-ink); }
 .sq-live.bad { border-color: #ff8f4d; color: #ffb27d; }
 .ok-text { color: #6ff2d6; margin: 6px 0 0; }
 .taxi-form { display: grid; grid-template-columns: 64px 1fr auto; gap: 6px; }
@@ -2366,8 +2366,8 @@ html[data-right-panel='1'] .chart-chip { bottom: 70px; }
 .desk-pilot .badge { margin-left: auto; }
 .desk-code { display: flex; align-items: center; gap: 10px; justify-content: center; margin: 10px 0; padding: 14px; border-radius: 12px; border: 1px dashed var(--accent); background: var(--accent-bg); }
 .desk-code .mono { font-size: 30px; font-weight: 700; letter-spacing: 0.08em; color: var(--accent-ink); }
-.desk-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; margin: 4px 0 6px; border-radius: 12px; background: rgba(47, 214, 181, 0.1); border: 1px solid rgba(47, 214, 181, 0.4); }
-.desk-cs { font-size: 18px; color: #b8fff0; }
+.desk-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; margin: 4px 0 6px; border-radius: 12px; background: var(--accent-bg); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); }
+.desk-cs { font-size: 18px; color: var(--accent-ink); }
 .desk-msg { padding: 0 2px; }
 .row-gap { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
 .row-gap .input { flex: 1; }
@@ -2843,7 +2843,7 @@ button.bl-row:hover,
   border-top: 1px dashed var(--line);
 }
 html[data-theme='light'] .log-rate.sim {
-  color: #0f766e;
+  color: var(--accent-ink);
 }
 
 /* ───────── ATC traffic alerts */
@@ -3087,7 +3087,7 @@ html[data-replay='1'] .telebar {
   color: var(--dim);
 }
 html[data-theme='light'] .st-ok {
-  color: #0f766e;
+  color: var(--accent-ink);
 }
 html[data-theme='light'] .st-go {
   color: #a16207;
@@ -3871,7 +3871,7 @@ html[data-overlay='1'] body {
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: 2px;
-  background: linear-gradient(90deg, #14b8a6, #7ee8dc);
+  background: linear-gradient(90deg, var(--accent), var(--accent-ink));
 }
 .ov-plane {
   position: absolute;
@@ -3933,4 +3933,33 @@ html[data-overlay='1'] body {
 }
 html[data-film='1'] .tour-chip {
   display: none;
+}
+
+/* ───────── Accent colour picker */
+.accent-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 10px;
+}
+.accent-row .dim {
+  margin-right: 4px;
+}
+.swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: var(--sw);
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s ease;
+}
+.swatch:hover {
+  transform: scale(1.1);
+}
+.swatch.on {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px var(--surface), 0 0 12px var(--sw);
 }

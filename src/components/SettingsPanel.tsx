@@ -1,3 +1,4 @@
+import { ACCENTS, type AccentId } from '../lib/accent';
 import { StatusSection } from './StatusSection';
 import { useStore } from '../state/store';
 import { Seg } from './ui';
@@ -64,6 +65,12 @@ export function SettingsPanel() {
 
       <div className="pop-label">Appearance</div>
       <Seg label="Theme" value={prefs.theme} onChange={(theme) => setPrefs({ theme })} options={[{ value: 'system', label: 'Match device' }, { value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }]} />
+      <div className="accent-row" role="radiogroup" aria-label="Accent colour">
+        <span className="dim small">Colour</span>
+        {(Object.keys(ACCENTS) as AccentId[]).map((id) => (
+          <button key={id} role="radio" aria-checked={prefs.accent === id} className={`swatch ${prefs.accent === id ? 'on' : ''}`} style={{ ['--sw' as string]: ACCENTS[id].dark }} title={ACCENTS[id].name} aria-label={ACCENTS[id].name} onClick={() => setPrefs({ accent: id })} />
+        ))}
+      </div>
       <Seg label="Panel style" value={prefs.glass ? 'glass' : 'solid'} onChange={(v) => setPrefs({ glass: v === 'glass' })} options={[{ value: 'glass', label: 'Liquid glass' }, { value: 'solid', label: 'Solid' }]} />
       <p className="fineprint">Liquid glass floats clear, frosted panels over the map. Choose Solid on slower computers or if text is hard to read.</p>
 

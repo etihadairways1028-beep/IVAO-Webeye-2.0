@@ -29,6 +29,8 @@ export interface Prefs {
   pollSec: 15 | 30 | 60;
   source: 'live' | 'demo';
   myVid: string;
+  /** Interface accent colour (Settings → Appearance). */
+  accent: import('../lib/accent').AccentId;
   /** Pilots and controllers you follow, by IVAO VID. */
   friends: { vid: number; name: string }[];
   /** Browser notifications for friends (in addition to in-app toasts). */
@@ -52,6 +54,7 @@ const DEFAULT_PREFS: Prefs = {
   pollSec: 15,
   source: 'live',
   myVid: '',
+  accent: 'blue',
   friends: [],
   friendNotify: false,
   simbriefUser: '',

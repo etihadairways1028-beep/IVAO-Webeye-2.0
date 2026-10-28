@@ -27,6 +27,7 @@ import { startTour, stopTour, useTour } from './lib/tour';
 import { useFriendAlerts } from './lib/friends';
 import { IconStar } from './components/Icons';
 import { ReplayBar } from './components/ReplayBar';
+import { applyAccent } from './lib/accent';
 import { BoardOverlay } from './components/Board';
 import { MeasureCard } from './components/MeasureCard';
 import { CommandPalette } from './components/CommandPalette';
@@ -274,6 +275,10 @@ export default function App() {
   }, []);
   const embedTheme = useStore((s) => s.embed?.theme ?? null);
   const theme = embedTheme ?? (themePref === 'system' ? (sysLight ? 'light' : 'dark') : themePref);
+  const accent = useStore((s) => s.prefs.accent);
+  useEffect(() => {
+    applyAccent(accent, theme === 'light');
+  }, [accent, theme]);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     const s = useStore.getState();

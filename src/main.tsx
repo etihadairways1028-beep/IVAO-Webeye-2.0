@@ -4,6 +4,7 @@ import App from './App';
 import './styles/global.css';
 import { initInstall } from './lib/install';
 import { readEmbedParams } from './components/Embed';
+import { applyAccent, type AccentId } from './lib/accent';
 import { StreamOverlay } from './components/StreamOverlay';
 
 initInstall();
@@ -13,6 +14,7 @@ try {
   document.documentElement.dataset.glass = p.glass === false ? '0' : '1';
   const light = p.theme === 'light' || (p.theme !== 'dark' && window.matchMedia('(prefers-color-scheme: light)').matches);
   document.documentElement.dataset.theme = light ? 'light' : 'dark';
+  applyAccent((p as { accent?: AccentId }).accent ?? 'blue', light);
 } catch {
   document.documentElement.dataset.glass = '1';
 }
