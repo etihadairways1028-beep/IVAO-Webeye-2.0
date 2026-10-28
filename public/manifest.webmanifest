@@ -1,6 +1,6 @@
 {
-  "name": "IVAO WebEye",
-  "short_name": "WebEye",
+  "name": "IVAO Pulse",
+  "short_name": "Pulse",
   "description": "Live map of IVAO pilots and air traffic controllers. Independent community project.",
   "id": "./",
   "start_url": "./",

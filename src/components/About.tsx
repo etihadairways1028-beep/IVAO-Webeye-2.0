@@ -2,19 +2,19 @@ import { useStore } from '../state/store';
 import { IconLogo, IconX } from './Icons';
 import { useInstall } from '../lib/install';
 
-export const APP_VERSION = '3.0';
+export const APP_VERSION = '3.1';
 
 /** Product information, data attribution and the independence notice. */
 export function About() {
   const setOverlay = useStore((s) => s.setOverlay);
   const { mode, install } = useInstall();
   return (
-    <div className="popover glass center about" role="dialog" aria-label="About IVAO WebEye">
+    <div className="popover glass center about" role="dialog" aria-label="About IVAO Pulse">
       <div className="popover-head">
         <div className="about-brand">
           <IconLogo size={30} />
           <div>
-            <h2>IVAO WebEye {APP_VERSION}</h2>
+            <h2>IVAO Pulse {APP_VERSION}</h2>
             <div className="dim small">Live traffic viewer for the IVAO network</div>
           </div>
         </div>
@@ -23,11 +23,11 @@ export function About() {
         </button>
       </div>
       <p className="about-text">
-        IVAO WebEye shows pilots and air traffic controllers connected to the International Virtual Aviation Organisation in real time, with flight
+        IVAO Pulse shows pilots and air traffic controllers connected to the International Virtual Aviation Organisation in real time, with flight
         details, SimBrief flight plans, airport information and ground charts.
       </p>
       <div className="notice" role="note">
-        <strong>Independent community project.</strong> IVAO WebEye is a concept built by members of the IVAO community. It is not an official IVAO release
+        <strong>Independent community project.</strong> IVAO Pulse is a concept built by members of the IVAO community. It is not an official IVAO release
         and is not endorsed by IVAO unless IVAO states otherwise. “IVAO” is a trademark of its owner. For simulation use only; never use it for real-world navigation.
       </div>
       <div className="pop-label">Data sources</div>

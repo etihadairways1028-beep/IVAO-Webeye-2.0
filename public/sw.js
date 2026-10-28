@@ -1,4 +1,4 @@
-/* IVAO WebEye service worker.
+/* IVAO Pulse service worker.
  * Caches the app shell and bundled reference data so the app opens fast and installs.
  * Live data (IVAO, SimBrief, weather, map tiles, anything under /proxy/) is never cached:
  * what the map shows as live must come from the network. */

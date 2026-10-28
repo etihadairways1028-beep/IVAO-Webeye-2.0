@@ -7,7 +7,8 @@ import { allAirports, getAirport } from '../data/airports';
 import { trails } from '../data/feed';
 import { bearing, circle, destination, distanceNm, greatCircle, smoothPath, unwrap } from '../lib/geo';
 import { fmtAltShort } from '../lib/format';
-import type { RadarFrame } from '../data/weather';
+import { fetchMetarsInBox, type RadarFrame, type StationWx } from '../data/weather';
+import { nightPolygon } from '../lib/sun';
 import type { TrackPoint } from '../data/ivao';
 import { planPoints, progressAlong } from '../data/simbrief';
 import { allCharts } from '../data/charts';
@@ -241,6 +242,20 @@ export class MapController {
       m.addLayer({ id: 'graticule-labels', type: 'symbol', source: 'graticule', minzoom: 3, layout: { 'symbol-placement': 'line', 'symbol-spacing': 600, 'text-field': ['get', 'l'], 'text-font': FONT_REG, 'text-size': 9.5 }, paint: { 'text-color': dark ? '#4f86b8' : '#64748b', 'text-halo-color': halo, 'text-halo-width': 1 } });
     }
 
+    // Night side of the Earth (and civil twilight), redrawn every minute.
+    src('night', this.nightData());
+    m.addLayer({ id: 'night', type: 'fill', source: 'night', layout: { visibility: this.vis('daynight') }, paint: { 'fill-color': dark ? '#000814' : '#0f172a', 'fill-opacity': ['match', ['get', 'offset'], 0, dark ? 0.32 : 0.12, dark ? 0.14 : 0.06], 'fill-antialias': false } });
+
+    // Traffic density, for the world view.
+    src('heat');
+    m.addLayer({ id: 'heat', type: 'heatmap', source: 'heat', maxzoom: 7, layout: { visibility: this.vis('heatmap') }, paint: { 'heatmap-weight': 1, 'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 1, 0.7, 6, 1.4], 'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 1, 16, 4, 26, 6, 36], 'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 5, 0.7, 7, 0], 'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], 0, 'rgba(20,184,166,0)', 0.15, 'rgba(20,184,166,0.18)', 0.4, 'rgba(34,211,238,0.38)', 0.7, 'rgba(250,204,21,0.55)', 1, 'rgba(251,113,133,0.75)'] } });
+
+    // Weather at airports (METAR): flight category dots and wind.
+    src('metar');
+    m.addLayer({ id: 'metar', type: 'circle', source: 'metar', minzoom: 3.5, layout: { visibility: this.vis('metar') }, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 3.5, 9, 7], 'circle-color': ['match', ['get', 'cat'], 'VFR', '#3ecf6e', 'MVFR', '#4c8dff', 'IFR', '#ff5c5c', 'LIFR', '#d946ef', '#8a96aa'], 'circle-opacity': 0.9, 'circle-stroke-color': dark ? '#04080f' : '#ffffff', 'circle-stroke-width': 1.2 } });
+    src('metar-labels');
+    m.addLayer({ id: 'metar-wind', type: 'symbol', source: 'metar-labels', minzoom: 6, layout: { visibility: this.vis('metar'), 'text-field': ['get', 'w'], 'text-font': FONT_BOLD, 'text-size': 10.5, 'text-offset': [0, -1.1], 'text-anchor': 'bottom', 'text-optional': true }, paint: { 'text-color': ['case', ['>=', ['get', 'spd'], 25], '#ffb547', dark ? '#d7e2ee' : '#1f2937'], 'text-halo-color': halo, 'text-halo-width': 1.4 } });
+
     // Airport ground chart (OpenStreetMap): drawn under everything else.
     src('chart', allCharts());
     const chartMin = 11.5;
@@ -430,6 +445,9 @@ export class MapController {
     this.pushLogRoute();
     this.pushConflicts();
     this.pushMeasure();
+    this.pushHeat();
+    this.metarAt = 0;
+    this.loadMetars(true);
   }
 
   private conflicts: { a: string; b: string; pa: [number, number]; pb: [number, number]; level: string; hNm: number; vFt: number; inSec: number }[] = [];
@@ -854,6 +872,8 @@ export class MapController {
     if (fresh) {
       this.pushHistory();
       this.pushTails();
+      this.pushHeat();
+      this.pushNight();
       if (this.plan) this.pushPlan();
     }
   }
@@ -916,6 +936,53 @@ export class MapController {
     if (frame && this.prefs.layers.weather) this.addWeather();
   }
 
+  private nightData(): FC {
+    const t = Date.now();
+    return { type: 'FeatureCollection', features: [nightPolygon(t, 6), nightPolygon(t, 0)] };
+  }
+  private nightAt = 0;
+  private pushNight() {
+    if (!this.prefs.layers.daynight || Date.now() - this.nightAt < 60000) return;
+    this.nightAt = Date.now();
+    this.set('night', this.nightData());
+  }
+  private pushHeat() {
+    if (!this.prefs.layers.heatmap) return this.set('heat', EMPTY);
+    this.set('heat', { type: 'FeatureCollection', features: this.flights.map((f) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [f.lon, f.lat] }, properties: {} })) });
+  }
+  // METARs for the visible area, refreshed as you pan (at most every 20 s) and every 10 minutes.
+  private metarAt = 0;
+  private metarBox = '';
+  private metarCtl: AbortController | null = null;
+  private metars = new Map<string, StationWx>();
+  loadMetars(force = false) {
+    if (!this.prefs.layers.metar || this.map.getZoom() < 3.5) return;
+    const b = this.map.getBounds();
+    const box: [number, number, number, number] = [Math.max(-180, b.getWest()), Math.max(-85, b.getSouth()), Math.min(180, b.getEast()), Math.min(85, b.getNorth())];
+    const key = box.map((v) => Math.round(v)).join(',');
+    if (!force && key === this.metarBox && Date.now() - this.metarAt < 600e3) return;
+    if (!force && Date.now() - this.metarAt < 20e3) return;
+    this.metarBox = key;
+    this.metarAt = Date.now();
+    this.metarCtl?.abort();
+    const ctl = (this.metarCtl = new AbortController());
+    fetchMetarsInBox(box, ctl.signal)
+      .then((list) => {
+        for (const w of list) this.metars.set(w.icao, w);
+        const all = [...this.metars.values()];
+        this.set('metar', { type: 'FeatureCollection', features: all.map((w) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [w.lon, w.lat] }, properties: { icao: w.icao, cat: w.cat ?? '', raw: w.raw } })) });
+        this.set('metar-labels', {
+          type: 'FeatureCollection',
+          features: all
+            .filter((w) => w.wspd != null)
+            .map((w) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [w.lon, w.lat] }, properties: { spd: w.wspd ?? 0, w: w.wspd ? `${w.wdir != null ? String(w.wdir).padStart(3, '0') : 'VRB'}/${w.wspd}${w.wgst ? `G${w.wgst}` : ''}` : 'CALM' } })),
+        });
+      })
+      .catch(() => {
+        /* weather is optional; keep what we have */
+      });
+  }
+
   private friendSet = new Set<number>();
   private measuring = false;
   private measurePts: { lon: number; lat: number; label: string }[] = [];
@@ -964,12 +1031,14 @@ export class MapController {
       m.setLayoutProperty('aircraft-labels', 'icon-image', this.boxExpr(p.labels));
     }
     if (prev.colorBy !== p.colorBy) m.setPaintProperty('aircraft', 'icon-color', this.aircraftColor());
-    for (const [key, layers] of [['airports', ['airports', 'airport-labels']], ['atc', ['atc', 'atc-labels', 'atc-ring-fill', 'atc-ring-line', 'fir-active-fill', 'fir-active-line']], ['firs', ['fir-lines']]] as const) {
+    for (const [key, layers] of [['airports', ['airports', 'airport-labels']], ['atc', ['atc', 'atc-labels', 'atc-ring-fill', 'atc-ring-line', 'fir-active-fill', 'fir-active-line']], ['firs', ['fir-lines']], ['daynight', ['night']], ['heatmap', ['heat']], ['metar', ['metar', 'metar-wind']]] as const) {
       for (const l of layers) if (m.getLayer(l)) m.setLayoutProperty(l, 'visibility', this.vis(key));
     }
     if (m.getLayer('history')) m.setLayoutProperty('history', 'visibility', this.styleId === 'radar' && p.layers.trails ? 'visible' : 'none');
     if (m.getLayer('tails')) m.setLayoutProperty('tails', 'visibility', this.styleId !== 'radar' && p.layers.trails ? 'visible' : 'none');
     if (prev.layers.trails !== p.layers.trails) this.pushTails();
+    if (prev.layers.heatmap !== p.layers.heatmap) this.pushHeat();
+    if (prev.layers.metar !== p.layers.metar && p.layers.metar) this.loadMetars();
     if (prev.layers.weather !== p.layers.weather) {
       if (p.layers.weather) this.addWeather();
       else this.removeWeather();
@@ -1067,13 +1136,27 @@ export class MapController {
 
   private hover(e: maplibregl.MapMouseEvent) {
     const m = this.map;
-    const clickable = ['aircraft', 'atc', 'airports'];
+    const clickable = ['aircraft', 'atc', 'airports', 'metar'];
     {
-      const layers = clickable.filter((l) => m.getLayer(l));
+      const layers = clickable.filter((l) => m.getLayer(l) && m.getLayoutProperty(l, 'visibility') !== 'none');
       if (!layers.length) return;
       const hits = m.queryRenderedFeatures([[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]], { layers });
-      m.getCanvas().style.cursor = hits.length ? 'pointer' : '';
+      if (!this.measuring) m.getCanvas().style.cursor = hits.length ? 'pointer' : '';
       const ac = hits.find((h) => h.layer.id === 'aircraft');
+      const wx = !ac ? hits.find((h) => h.layer.id === 'metar') : undefined;
+      if (wx && !window.matchMedia('(hover: none)').matches) {
+        const key = `wx:${wx.properties.icao}`;
+        if (key !== this.hoverKey) {
+          this.hoverKey = key;
+          const el = document.createElement('div');
+          el.innerHTML = `<div class="tip-cs"></div><div class="tip-row mono tip-metar"></div>`;
+          el.children[0].textContent = `${wx.properties.icao} · ${wx.properties.cat || 'METAR'}`;
+          el.children[1].textContent = String(wx.properties.raw ?? '');
+          this.popup.setDOMContent(el);
+        }
+        this.popup.setLngLat(wx.geometry.type === 'Point' ? (wx.geometry.coordinates as [number, number]) : e.lngLat).addTo(m);
+        return;
+      }
       if (!ac || window.matchMedia('(hover: none)').matches) {
         if (this.hoverKey) this.popup.remove();
         this.hoverKey = null;
@@ -1103,6 +1186,7 @@ export class MapController {
       this.cb.onView([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], m.getZoom());
     };
     m.on('moveend', emitView);
+    m.on('moveend', () => this.loadMetars());
     m.on('load', emitView);
     m.on('dragstart', () => this.cb.onUserMove());
     m.on('error', (e) => {

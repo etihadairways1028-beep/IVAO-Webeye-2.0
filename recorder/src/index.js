@@ -1,4 +1,4 @@
-// IVAO WebEye track recorder.
+// IVAO Pulse track recorder.
 //
 // Every minute a cron trigger asks one SQLite-backed Durable Object to fetch IVAO's public
 // Whazzup feed and save every connected pilot's position. The map then asks
@@ -7,10 +7,10 @@
 //
 // It also carries ATC clearances: a controller proves which station they are by putting a
 // one-time code in their ATIS (read back from the public feed), then sends squawks and taxi
-// routes that the pilot's WebEye picks up. See "ATC clearances" below.
+// routes that the pilot's Pulse picks up. See "ATC clearances" below.
 //
 // It also keeps an automatic logbook (takeoff → landing per pilot), touchdowns sent by the
-// WebEye Link sim add-on, and weekly leaderboards (hours, flights, landings, ATC time).
+// Pulse Link sim add-on, and weekly leaderboards (hours, flights, landings, ATC time).
 //
 // Free-plan budget (per day): ~23k rows inserted + ~23k deleted, ~15k ATC-time updates and
 // a few rows per landing (limit 100k written),
@@ -46,7 +46,7 @@ export class Recorder extends DurableObject {
     // Logbook: flights in progress (since takeoff) and completed flights by VID.
     this.sql.exec(`CREATE TABLE IF NOT EXISTS active (session INTEGER PRIMARY KEY, vid INTEGER, data TEXT, takeoff INTEGER) WITHOUT ROWID`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS logbook (vid INTEGER NOT NULL, landed INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY (vid, landed)) WITHOUT ROWID`);
-    // Touchdowns sent by the WebEye Link sim add-on, and weekly totals for the leaderboards.
+    // Touchdowns sent by the Pulse Link sim add-on, and weekly totals for the leaderboards.
     this.sql.exec(`CREATE TABLE IF NOT EXISTS touchdown (session INTEGER NOT NULL, at INTEGER NOT NULL, vid INTEGER, data TEXT, PRIMARY KEY (session, at)) WITHOUT ROWID`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS weekly (week INTEGER NOT NULL, vid INTEGER NOT NULL, minutes INTEGER, flights INTEGER, best_fpm INTEGER, callsign TEXT, PRIMARY KEY (week, vid)) WITHOUT ROWID`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS atc_week (week INTEGER NOT NULL, vid INTEGER NOT NULL, minutes INTEGER, callsign TEXT, PRIMARY KEY (week, vid)) WITHOUT ROWID`);
@@ -64,7 +64,7 @@ export class Recorder extends DurableObject {
     const minute = this.env && this.env.TEST_FAKE_MINUTES ? Math.floor(Date.now() / 60000) - 60 + (this.fake = (this.fake || 0) + 1) : Math.floor(Date.now() / 60000);
     let pilots;
     try {
-      const res = await fetch((this.env && this.env.WHAZZUP_URL) || WHAZZUP, { headers: { Accept: 'application/json', 'User-Agent': 'IVAO-WebEye-recorder/1.0 (+community)' } });
+      const res = await fetch((this.env && this.env.WHAZZUP_URL) || WHAZZUP, { headers: { Accept: 'application/json', 'User-Agent': 'IVAO-Pulse-recorder/1.0 (+community)' } });
       if (!res.ok) throw new Error(`Whazzup HTTP ${res.status}`);
       const j = await res.json();
       pilots = (j && j.clients && j.clients.pilots) || [];
@@ -228,7 +228,7 @@ export class Recorder extends DurableObject {
     return { flights: rows.map((r) => JSON.parse(r.data)), active, atcMinutes: (atc && atc.m) || 0 };
   }
 
-  /** Touchdown from the WebEye Link add-on. Accepted only if that VID is flying on IVAO right there. */
+  /** Touchdown from the Pulse Link add-on. Accepted only if that VID is flying on IVAO right there. */
   async touchdown(body) {
     const vid = Number(body.vid);
     if (!Number.isInteger(vid) || vid <= 0) return { status: 400, body: { error: 'Missing VID.' } };
@@ -338,7 +338,7 @@ Object.assign(Recorder.prototype, {
   /** Latest Whazzup snapshot, refetched when older than maxAge. */
   async getFeed(maxAge = 20000) {
     if (this.feed && Date.now() - this.feedAt < maxAge) return this.feed;
-    const res = await fetch((this.env && this.env.WHAZZUP_URL) || WHAZZUP, { headers: { Accept: 'application/json', 'User-Agent': 'IVAO-WebEye-recorder/1.0 (+community)' } });
+    const res = await fetch((this.env && this.env.WHAZZUP_URL) || WHAZZUP, { headers: { Accept: 'application/json', 'User-Agent': 'IVAO-Pulse-recorder/1.0 (+community)' } });
     if (!res.ok) throw new Error(`IVAO feed HTTP ${res.status}`);
     this.feed = await res.json();
     this.feedAt = Date.now();
@@ -451,7 +451,7 @@ Object.assign(Recorder.prototype, {
     return { status: 200, body: { ok: true, pilot: pilotCs, at: now } };
   },
 
-  /** The pilot's WebEye asks for the latest clearance for its callsign and session. */
+  /** The pilot's Pulse asks for the latest clearance for its callsign and session. */
   clearanceFor(callsign, session) {
     const cs = clean(callsign, 12).toUpperCase();
     const r = this.sql.exec('SELECT session, data, at, ack FROM clearance WHERE pilot = ?', cs).toArray()[0];
@@ -525,7 +525,7 @@ export default {
     if (url.pathname === '/leaderboard') return json(await rec.leaderboard(url.searchParams.get('week')), 200, { 'Cache-Control': 'public, max-age=120' });
     if (url.pathname === '/stats') return json(await rec.stats(), 200, { 'Cache-Control': 'public, max-age=120' });
     if (url.pathname === '/' || url.pathname === '/status') {
-      return json({ service: 'IVAO WebEye track recorder', ...(await recorder(env).status()) });
+      return json({ service: 'IVAO Pulse track recorder', ...(await recorder(env).status()) });
     }
     return json({ error: 'Not found' }, 404);
   },

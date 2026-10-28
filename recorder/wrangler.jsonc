@@ -1,5 +1,5 @@
 {
-  // IVAO WebEye track recorder: saves every pilot's position once a minute so the map
+  // IVAO Pulse track recorder: saves every pilot's position once a minute so the map
   // can show a flight's full track from pushback, for every visitor, with no API key.
   // Runs on the Cloudflare Workers free plan (SQLite Durable Object + one cron trigger).
   "$schema": "node_modules/wrangler/config-schema.json",

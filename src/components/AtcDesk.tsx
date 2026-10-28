@@ -123,7 +123,7 @@ function Verify() {
               <IconCopy size={15} />
             </button>
           </div>
-          <p className="dim small">WebEye reads IVAO's public feed and checks the code is on {station}. No password needed, and nobody else can claim your station. It checks again every 15 seconds.</p>
+          <p className="dim small">Pulse reads IVAO's public feed and checks the code is on {station}. No password needed, and nobody else can claim your station. It checks again every 15 seconds.</p>
           <div className="row-gap">
             <button className="btn" disabled={busy} onClick={verify}>
               {busy ? 'Checking…' : 'Check now'}
@@ -388,7 +388,7 @@ function SendForm({ flight, icao, canTaxi, last, onClose }: { flight: Flight; ic
       </button>
       {msg && <p className={msg.ok ? 'ok-text small' : 'warn small'}>{msg.text}</p>}
       {last && <p className="dim small">Last sent {ago(last.at)}{last.ack ? ` · wilco ${ago(last.ack)}` : ' · waiting for wilco'}.</p>}
-      <p className="fineprint">This is a visual aid: always give the clearance on frequency as well. The pilot sees it in WebEye under My flight.</p>
+      <p className="fineprint">This is a visual aid: always give the clearance on frequency as well. The pilot sees it in Pulse under My flight.</p>
     </Section>
   );
 }
@@ -427,7 +427,7 @@ function TrafficAlerts() {
       }
     >
       {!conflicts.length ? (
-        <p className="ok-text small">No conflicts in your area. WebEye checks every update for aircraft closer than 3 NM (near your field) or 5 NM and 1,000 ft, now or within 2 minutes.</p>
+        <p className="ok-text small">No conflicts in your area. Pulse checks every update for aircraft closer than 3 NM (near your field) or 5 NM and 1,000 ft, now or within 2 minutes.</p>
       ) : (
         <ul className="alerts">
           {conflicts.map((c) => (

@@ -81,7 +81,7 @@ export function TopNavigation({ visibleCount }: { visibleCount: number }) {
       </div>
       <div className="brand-text">
           <span className="brand-name">
-            IVAO WebEye<span className="brand-ver">3.0</span>
+            IVAO Pulse<span className="brand-ver">3.1</span>
           </span>
           <span className="brand-sub">Live network traffic · community edition</span>
       </div>
@@ -114,14 +114,14 @@ export function TopNavigation({ visibleCount }: { visibleCount: number }) {
           <IconLayers />
         </button>
         {inst.mode === 'prompt' && (
-          <button className="icon-btn" aria-label="Install app" title="Install IVAO WebEye as an app" onClick={inst.install}>
+          <button className="icon-btn" aria-label="Install app" title="Install IVAO Pulse as an app" onClick={inst.install}>
             <IconImport />
           </button>
         )}
         <button className="icon-btn" aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'} title={isLight ? 'Dark mode' : 'Light mode'} onClick={() => setPrefs({ theme: isLight ? 'dark' : 'light' })}>
           {isLight ? <IconMoon /> : <IconSun />}
         </button>
-        <button className={`icon-btn ${overlay === 'about' ? 'on' : ''}`} aria-label="About IVAO WebEye" title="About" aria-expanded={overlay === 'about'} onClick={() => setOverlay(overlay === 'about' ? null : 'about')}>
+        <button className={`icon-btn ${overlay === 'about' ? 'on' : ''}`} aria-label="About IVAO Pulse" title="About" aria-expanded={overlay === 'about'} onClick={() => setOverlay(overlay === 'about' ? null : 'about')}>
           <IconInfo />
         </button>
         <button className={`icon-btn ${overlay === 'settings' ? 'on' : ''}`} aria-label="Settings" title="Settings" aria-expanded={overlay === 'settings'} onClick={() => setOverlay(overlay === 'settings' ? null : 'settings')}>

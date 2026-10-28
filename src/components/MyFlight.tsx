@@ -207,6 +207,36 @@ export function MyFlight() {
         )}
         <p className="fineprint">Fetched from SimBrief’s public OFP endpoint. The planned route (purple) is drawn from your navlog fixes; it is your plan, not an IVAO record.</p>
       </Section>
+      <StreamSection vid={prefs.myVid} />
     </Panel>
+  );
+}
+
+/** Links for streamers: a transparent overlay for OBS showing the live flight and landing rate. */
+function StreamSection({ vid }: { vid: string }) {
+  const [style, setStyle] = useState<'bar' | 'card'>('bar');
+  if (!vid) return null;
+  const url = `${location.origin}${location.pathname}?overlay=${vid}${style === 'card' ? '&style=card' : ''}`;
+  return (
+    <Section title="Streaming overlay">
+      <p className="small">Add this as a <strong>Browser Source</strong> in OBS or Streamlabs (1920×1080). It shows your live flight on stream, then your landing rate when you touch down.</p>
+      <div className="seg board-seg" role="group" aria-label="Overlay style">
+        <button className={style === 'bar' ? 'on' : ''} onClick={() => setStyle('bar')}>
+          Lower third
+        </button>
+        <button className={style === 'card' ? 'on' : ''} onClick={() => setStyle('card')}>
+          Corner card
+        </button>
+      </div>
+      <pre className="embed-code mono">{url}</pre>
+      <div className="row-gap">
+        <button className="btn small" onClick={() => navigator.clipboard.writeText(url).then(() => useStore.getState().notify('Overlay link copied'), () => useStore.getState().notify(url))}>
+          Copy link
+        </button>
+        <a className="link-btn" href={`${url}&demo=1`} target="_blank" rel="noopener noreferrer">
+          Preview
+        </a>
+      </div>
+    </Section>
   );
 }

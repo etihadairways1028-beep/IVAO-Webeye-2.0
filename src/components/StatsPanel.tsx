@@ -86,7 +86,7 @@ export function StatsPanel() {
       <Section title="Most flown aircraft">
         <BarList rows={s.topTypes} empty="No aircraft types filed yet." />
       </Section>
-      <p className="fineprint">Live counts from IVAO’s public feed; history is sampled every 10 minutes by the WebEye recorder.</p>
+      <p className="fineprint">Live counts from IVAO’s public feed; history is sampled every 10 minutes by the Pulse recorder.</p>
       </>}
     </Panel>
   );

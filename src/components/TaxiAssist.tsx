@@ -151,7 +151,7 @@ export function ClearanceTools({ flight, planOrigin }: { flight: Flight | null; 
               {ackBusy ? 'Sending…' : 'Wilco'}
             </button>
           )}
-          <div className="fineprint">From a controller verified by WebEye. Read it back on frequency as usual.</div>
+          <div className="fineprint">From a controller verified by Pulse. Read it back on frequency as usual.</div>
         </div>
       )}
       <Section title="ATC clearance" icon={<IconRoute size={15} />}>
@@ -169,7 +169,7 @@ export function ClearanceTools({ flight, planOrigin }: { flight: Flight | null; 
         {sqValid && live && live === sq && <p className="ok-text small">Squawk {sq} is set correctly.</p>}
         {sqValid && live && live !== sq && <p className="warn small">ATC gave you {sq}, but your transponder shows {live}. Set {sq}.</p>}
         {sqValid && !live && <p className="dim small">Your transponder code appears here once you’re connected to IVAO.</p>}
-        <p className="fineprint">A controller using WebEye’s ATC desk can send these to you directly. Otherwise, type in what ATC gave you on frequency and WebEye checks and draws it.</p>
+        <p className="fineprint">A controller using Pulse’s ATC desk can send these to you directly. Otherwise, type in what ATC gave you on frequency and Pulse checks and draws it.</p>
       </Section>
 
       <Section title="Taxi" icon={<IconRunway size={15} />} aside={route ? <span className="mono dim">{fmtM(route.lengthM)}</span> : undefined}>

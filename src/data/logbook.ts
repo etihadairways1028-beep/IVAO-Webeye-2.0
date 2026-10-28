@@ -1,4 +1,4 @@
-// Automatic flight log, kept by the WebEye recorder for every IVAO pilot (no sign-in):
+// Automatic flight log, kept by the Pulse recorder for every IVAO pilot (no sign-in):
 // a flight is logged when the aircraft takes off and lands again while connected.
 import { RECORDER_URL } from './endpoints';
 import { seenLandings } from './feed';
@@ -17,7 +17,7 @@ export interface LoggedFlight {
   descentFpm: number | null;
   /** Vertical speed this browser saw on the last report before touchdown, when the page was open. */
   seenFpm?: number | null;
-  /** Exact touchdown from the WebEye Link sim add-on. */
+  /** Exact touchdown from the Pulse Link sim add-on. */
   touchdown?: { fpm: number; g: number | null; ias: number | null; pitch: number | null; bank: number | null; fuelUsedKg: number | null; bounces: number; sim: string } | null;
   route: [number, number, number][];
 }
@@ -85,7 +85,7 @@ export async function fetchLeaderboard(which: 'this' | 'last', signal?: AbortSig
   return (await r.json()) as Leaderboard;
 }
 
-export const LINK_EXE = 'https://github.com/etihadairways1028-beep/IVAO-Webeye-2.0/releases/download/webeye-link/WebEyeLink.exe';
+export const LINK_EXE = 'https://github.com/etihadairways1028-beep/IVAO-Webeye-2.0/releases/download/webeye-link/PulseLink.exe';
 export const LINK_PY = 'https://github.com/etihadairways1028-beep/IVAO-Webeye-2.0/releases/download/webeye-link/webeye_link.py';
 
 export interface Badge {
@@ -112,7 +112,7 @@ export function badges(flights: LoggedFlight[], atcMinutes = 0): Badge[] {
     b('hundred', 'Centurion', 'Log 100 flights', n >= 100, `${n}/100`),
     b('h10', '10 hours', 'Fly 10 hours', hours >= 10, `${hours.toFixed(1)}/10 h`),
     b('h100', '100 hours', 'Fly 100 hours', hours >= 100, `${hours.toFixed(0)}/100 h`),
-    b('butter', 'Butter', 'Land softer than 150 fpm (WebEye Link)', best < 150, best < 9999 ? `best ${best} fpm` : 'needs WebEye Link'),
+    b('butter', 'Butter', 'Land softer than 150 fpm (Pulse Link)', best < 150, best < 9999 ? `best ${best} fpm` : 'needs Pulse Link'),
     b('longhaul', 'Long haul', 'One flight of 6 hours or more', longest >= 360, `longest ${Math.floor(longest / 60)}:${String(longest % 60).padStart(2, '0')}`),
     b('far', 'Ocean crosser', 'One flight of 2,500 NM or more', far >= 2500, `longest ${far} NM`),
     b('globe', 'Globetrotter', 'Visit 25 airports', apts.size >= 25, `${apts.size}/25`),

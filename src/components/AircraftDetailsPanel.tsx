@@ -9,6 +9,9 @@ import { IconClock, IconCrosshair, IconFollow, IconPlane, IconRoute, IconShare }
 import { shareSelection } from '../lib/share';
 import { openProfile } from './Logbook';
 import { FriendStar } from './Friends';
+import { FlightProfile } from './FlightProfile';
+import { airlineName, airlineOf } from '../data/airlines';
+import { openAirline } from './AirlinePanel';
 import { IconUser } from './Icons';
 import type { Flight } from '../types';
 import { flightProgress, type Progress } from '../lib/progress';
@@ -72,7 +75,7 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
   const trackTitle = !trackInfo
     ? 'Loading the flown track…'
     : trackOk
-      ? `${trackInfo.points} positions from ${trackInfo.source === 'recorder' ? 'the WebEye recorder, one a minute from pushback' : 'IVAO'}, joined to what this browser has seen.`
+      ? `${trackInfo.points} positions from ${trackInfo.source === 'recorder' ? 'the Pulse recorder, one a minute from pushback' : 'IVAO'}, joined to what this browser has seen.`
       : `The full track isn't available: ${trackInfo.note ?? trackInfo.error ?? 'no history yet'}. The line shows what this browser has seen since you opened it, with a dashed estimate back to the departure airport.`;
 
   return (
@@ -107,7 +110,7 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
             <IconRoute size={15} /> Route
           </button>
           {!f.demo && <FriendStar vid={f.vid} name={f.callsign} />}
-          <button className="chip-btn" onClick={() => shareSelection(`${f.callsign} on IVAO WebEye`, { kind: 'flight', key: f.key })} title="Copy a link to this flight">
+          <button className="chip-btn" onClick={() => shareSelection(`${f.callsign} on IVAO Pulse`, { kind: 'flight', key: f.key })} title="Copy a link to this flight">
             <IconShare size={15} /> Share
           </button>
         </>
@@ -146,6 +149,11 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
         <span className="dim small">colour = altitude</span>
       </div>
 
+      <details className="fold" open={!f.demo}>
+        <summary>Profile</summary>
+        <FlightProfile f={f} />
+      </details>
+
       <details className="fold">
         <summary>Flight details</summary>
         <div className="grid-kv">
@@ -183,11 +191,18 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
           <KV optional k="Simulator" v={f.simulator ?? dash} />
           <KV optional k="Software" v={f.software ?? dash} wide />
         </div>
-        {!f.demo && (
-          <button className="chip-btn" onClick={() => openProfile(f.vid)} title="Logbook, hours and badges for this pilot">
-            <IconUser size={15} /> Pilot profile &amp; logbook
-          </button>
-        )}
+        <div className="row-gap">
+          {!f.demo && (
+            <button className="chip-btn" onClick={() => openProfile(f.vid)} title="Logbook, hours and badges for this pilot">
+              <IconUser size={15} /> Pilot profile &amp; logbook
+            </button>
+          )}
+          {airlineOf(f.callsign) && (
+            <button className="chip-btn" onClick={() => openAirline(airlineOf(f.callsign)!)} title="Every flight of this airline online now">
+              <IconPlane size={15} /> {airlineName(airlineOf(f.callsign)!) ?? airlineOf(f.callsign)}
+            </button>
+          )}
+        </div>
       </details>
 
       <details className="fold">

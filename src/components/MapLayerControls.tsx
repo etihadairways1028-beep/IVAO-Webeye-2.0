@@ -2,7 +2,7 @@ import { useStore, type MapStyleId } from '../state/store';
 import { STYLE_META } from '../map/styles';
 import { ALT_RAMP, ATC_COLORS } from '../map/controller';
 import { Seg, Toggle } from './ui';
-import { IconCloud, IconRunway, IconSector, IconTower, IconTrail, IconX } from './Icons';
+import { IconCloud, IconRadar, IconRunway, IconSector, IconSun, IconTower, IconTrail, IconX } from './Icons';
 import { ago } from '../lib/format';
 
 const SWATCH: Record<MapStyleId, string> = {
@@ -65,6 +65,19 @@ export function MapLayerControls() {
         checked={layers.weather}
         onChange={(v) => setLayer('weather', v)}
       />
+      <Toggle
+        icon={<IconCloud size={16} />}
+        label="Airport weather"
+        hint={
+          <span className="wx-legend">
+            <i style={{ background: '#3ecf6e' }} />VFR <i style={{ background: '#4c8dff' }} />MVFR <i style={{ background: '#ff5c5c' }} />IFR <i style={{ background: '#d946ef' }} />LIFR · winds from zoom 6
+          </span>
+        }
+        checked={layers.metar}
+        onChange={(v) => setLayer('metar', v)}
+      />
+      <Toggle icon={<IconSun size={16} />} label="Day and night" hint="Night side and twilight, updated every minute" checked={layers.daynight} onChange={(v) => setLayer('daynight', v)} />
+      <Toggle icon={<IconRadar size={16} />} label="Traffic heatmap" hint="Where the network is busiest (world view)" checked={layers.heatmap} onChange={(v) => setLayer('heatmap', v)} />
       <Toggle icon={<IconTrail size={16} />} label="Trails" hint="Selected aircraft, plus history dots in radar mode" checked={layers.trails} onChange={(v) => setLayer('trails', v)} />
 
       <div className="pop-label">Aircraft labels</div>

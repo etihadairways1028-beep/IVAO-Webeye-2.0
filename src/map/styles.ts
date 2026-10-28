@@ -93,7 +93,7 @@ export function styleFor(id: MapStyleId): string | StyleSpecification {
   }
 }
 
-/** Re-tint CARTO Dark Matter toward WebEye's midnight-navy palette. */
+/** Re-tint CARTO Dark Matter toward Pulse's midnight-navy palette. */
 export function tintDark(style: StyleSpecification): StyleSpecification {
   const layers = style.layers.map((l) => {
     const id = l.id.toLowerCase();

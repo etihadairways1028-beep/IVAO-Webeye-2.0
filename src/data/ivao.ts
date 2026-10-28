@@ -195,7 +195,7 @@ export interface TrackPoint {
  * GET /v2/tracker/sessions/{sessionId}/tracks — part of IVAO's public tracker API.
  */
 /**
- * Full track of a session. Uses the WebEye recorder when one is configured (public, no key,
+ * Full track of a session. Uses the Pulse recorder when one is configured (public, no key,
  * one point per minute from pushback), otherwise IVAO's own tracks endpoint.
  * `since` (ms) asks the recorder only for newer points.
  */
@@ -208,11 +208,11 @@ export async function fetchSessionTrack(sessionId: number, signal?: AbortSignal,
         const points = parseTrack(await res.json());
         // An incremental refresh may legitimately be empty; a first load with no history falls through to IVAO.
         if (since || points.length >= 2) return { points, source: 'recorder' };
-        note = 'the WebEye recorder has no history for this flight yet';
-      } else note = `the WebEye recorder answered ${res.status}`;
+        note = 'the Pulse recorder has no history for this flight yet';
+      } else note = `the Pulse recorder answered ${res.status}`;
     } catch (e) {
       if ((e as Error).name === 'AbortError') throw e;
-      note = 'the WebEye recorder could not be reached';
+      note = 'the Pulse recorder could not be reached';
     }
   }
   try {

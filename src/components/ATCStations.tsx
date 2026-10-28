@@ -119,7 +119,7 @@ export function AtcDetailsPanel({ c }: { c: Controller }) {
               Airport
             </button>
           )}
-          <button className="chip-btn" onClick={() => shareSelection(`${c.callsign} on IVAO WebEye`, { kind: 'atc', key: c.key })} title="Copy a link to this station">
+          <button className="chip-btn" onClick={() => shareSelection(`${c.callsign} on IVAO Pulse`, { kind: 'atc', key: c.key })} title="Copy a link to this station">
             <IconShare size={15} /> Share
           </button>
         </>

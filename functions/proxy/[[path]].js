@@ -20,7 +20,7 @@ export async function onRequest({ request, params, env }) {
   if (!base) return new Response('Unknown service', { status: 404 });
   const url = new URL(request.url);
   const target = `${base}/${rest.join('/')}${url.search}`;
-  const init = { method: request.method, headers: { Accept: request.headers.get('Accept') || '*/*', 'User-Agent': 'WebEye/2.1 (+community)' } };
+  const init = { method: request.method, headers: { Accept: request.headers.get('Accept') || '*/*', 'User-Agent': 'Pulse/2.1 (+community)' } };
   if (svc === 'ivao' && env && env.IVAO_API_KEY) {
     init.headers.apiKey = env.IVAO_API_KEY;
     init.headers['X-API-Key'] = env.IVAO_API_KEY;

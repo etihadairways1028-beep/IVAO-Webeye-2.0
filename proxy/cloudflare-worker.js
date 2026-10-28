@@ -15,7 +15,7 @@ export default {
     const prefix = Object.keys(ROUTES).find((p) => url.pathname.startsWith(p + '/'));
     if (!prefix) return new Response('Not found', { status: 404, headers: cors });
     const target = ROUTES[prefix] + url.pathname.slice(prefix.length) + url.search;
-    const res = await fetch(target, { method: req.method, body: req.method === 'POST' ? await req.text() : undefined, headers: { 'Content-Type': req.headers.get('Content-Type') || 'application/json', 'User-Agent': 'WebEye2-proxy' }, cf: { cacheTtl: prefix === '/ivao' ? 10 : 60 } });
+    const res = await fetch(target, { method: req.method, body: req.method === 'POST' ? await req.text() : undefined, headers: { 'Content-Type': req.headers.get('Content-Type') || 'application/json', 'User-Agent': 'Pulse2-proxy' }, cf: { cacheTtl: prefix === '/ivao' ? 10 : 60 } });
     const h = new Headers(res.headers);
     Object.entries(cors).forEach(([k, v]) => h.set(k, v));
     return new Response(res.body, { status: res.status, headers: h });

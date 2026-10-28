@@ -1,4 +1,4 @@
-// ATC clearances through the WebEye recorder (see recorder/src/index.js).
+// ATC clearances through the Pulse recorder (see recorder/src/index.js).
 // A controller proves which station they are by putting a one-time code in their ATIS;
 // after that they can send a squawk and a taxi route to pilots at their airport.
 import { RECORDER_URL } from './endpoints';
@@ -30,12 +30,12 @@ export interface AtcSession {
 }
 
 async function call<T>(path: string, body?: unknown): Promise<T> {
-  if (!RECORDER_URL) throw new Error('ATC clearances need the WebEye recorder, which is not set up for this site.');
+  if (!RECORDER_URL) throw new Error('ATC clearances need the Pulse recorder, which is not set up for this site.');
   let res: Response;
   try {
     res = await fetch(`${RECORDER_URL}${path}`, body === undefined ? { headers: { Accept: 'application/json' } } : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   } catch {
-    throw new Error('Could not reach the WebEye server. Check your connection and try again.');
+    throw new Error('Could not reach the Pulse server. Check your connection and try again.');
   }
   const j = (await res.json().catch(() => null)) as (T & { error?: string; waiting?: boolean }) | null;
   if (!res.ok) {

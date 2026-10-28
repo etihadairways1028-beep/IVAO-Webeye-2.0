@@ -20,6 +20,10 @@ import { Logbook } from './components/Logbook';
 import { StatsPanel } from './components/StatsPanel';
 import { Profile } from './components/Profile';
 import { FriendsPanel } from './components/Friends';
+import { AirlinePanel } from './components/AirlinePanel';
+import { EmbedBadge } from './components/Embed';
+import { TourChip } from './components/TourChip';
+import { startTour, stopTour, useTour } from './lib/tour';
 import { useFriendAlerts } from './lib/friends';
 import { IconStar } from './components/Icons';
 import { ReplayBar } from './components/ReplayBar';
@@ -179,6 +183,7 @@ function useShortcuts() {
       else if (k === 'r') s.setPrefs({ mapStyle: s.prefs.mapStyle === 'radar' ? s.prefs.lastNonRadarStyle : 'radar' });
       else if (k === 'l') s.setPrefs({ labels: s.prefs.labels === 'auto' ? 'full' : s.prefs.labels === 'full' ? 'off' : s.prefs.labels === 'off' ? 'callsign' : 'auto' });
       else if (k === 'm') s.setOverlay(s.overlay === 'layers' ? null : 'layers');
+      else if (k === 'o') (s.tour ? stopTour() : startTour());
       else if (k === 'x') useStore.setState({ measure: s.measure ? null : [] });
       else if (k === 'y') (s.replay ? exitReplay() : enterReplay());
       else if (k === ' ' && s.replay) setReplay({ playing: !s.replay.playing });
@@ -208,6 +213,7 @@ export default function App() {
   usePilotClearance();
   useConflictAlerts();
   useFriendAlerts();
+  useTour();
 
   useEffect(() => {
     loadAirports()
@@ -223,7 +229,18 @@ export default function App() {
 
   // Filtering drives both the map and the directory. View-bounds filtering only
   // re-runs on camera moves when that region filter is active.
-  const visible = useMemo(() => flights.filter((f) => passesFilters(f, filters, filters.region === 'view' ? viewBounds : null)), [flights, filters, filters.region === 'view' ? viewBounds : null]); // eslint-disable-line react-hooks/exhaustive-deps
+  const airlineFilter = useStore((s) => s.airlineFilter);
+  const embed = useStore((s) => s.embed);
+  const visible = useMemo(
+    () =>
+      flights.filter(
+        (f) =>
+          passesFilters(f, filters, filters.region === 'view' ? viewBounds : null) &&
+          (!airlineFilter || (f.callsign.startsWith(airlineFilter) && /\d/.test(f.callsign.charAt(airlineFilter.length)))) &&
+          (!embed?.airport || f.dep === embed.airport || f.arr === embed.airport),
+      ),
+    [flights, filters, filters.region === 'view' ? viewBounds : null, airlineFilter, embed], // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   // Map shows filtered traffic (selected aircraft always stays visible).
   useEffect(() => {
@@ -255,7 +272,8 @@ export default function App() {
     mq.addEventListener('change', on);
     return () => mq.removeEventListener('change', on);
   }, []);
-  const theme = themePref === 'system' ? (sysLight ? 'light' : 'dark') : themePref;
+  const embedTheme = useStore((s) => s.embed?.theme ?? null);
+  const theme = embedTheme ?? (themePref === 'system' ? (sysLight ? 'light' : 'dark') : themePref);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     const s = useStore.getState();
@@ -287,6 +305,9 @@ export default function App() {
       {panel === 'stats' && <StatsPanel />}
       {panel === 'profile' && <Profile />}
       {panel === 'friends' && <FriendsPanel />}
+      {panel === 'airline' && <AirlinePanel />}
+      <EmbedBadge />
+      <TourChip />
       <ReplayBar />
       <BoardOverlay />
       <MeasureCard />
@@ -304,7 +325,7 @@ export default function App() {
       {!airportsReady && (
         <div className="splash" role="status" aria-live="polite">
           <IconLogo size={44} />
-          <div className="splash-name">IVAO WebEye</div>
+          <div className="splash-name">IVAO Pulse</div>
           <div className="splash-bar"><span /></div>
           <div className="dim small">Loading airport database…</div>
         </div>

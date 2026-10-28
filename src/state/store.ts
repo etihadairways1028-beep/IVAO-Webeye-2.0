@@ -6,7 +6,7 @@ import { loadAtcSession, type AtcSession, type Clearance } from '../data/atc';
 
 export type MapStyleId = 'dark' | 'standard' | 'satellite' | 'radar';
 export type LabelMode = 'auto' | 'off' | 'callsign' | 'full';
-export type Panel = 'traffic' | 'airports' | 'atc' | 'myflight' | 'atcdesk' | 'logbook' | 'stats' | 'profile' | 'friends';
+export type Panel = 'traffic' | 'airports' | 'atc' | 'myflight' | 'atcdesk' | 'logbook' | 'stats' | 'profile' | 'friends' | 'airline';
 
 export interface Filters {
   wake: WakeCat[]; // empty = all
@@ -25,7 +25,7 @@ export interface Prefs {
   glass: boolean;
   theme: 'system' | 'dark' | 'light';
   colorBy: 'uniform' | 'altitude';
-  layers: { airports: boolean; atc: boolean; weather: boolean; trails: boolean; borders: boolean; firs: boolean };
+  layers: { airports: boolean; atc: boolean; weather: boolean; trails: boolean; borders: boolean; firs: boolean; metar: boolean; daynight: boolean; heatmap: boolean };
   pollSec: 15 | 30 | 60;
   source: 'live' | 'demo';
   myVid: string;
@@ -48,7 +48,7 @@ const DEFAULT_PREFS: Prefs = {
   glass: true,
   theme: 'system',
   colorBy: 'uniform',
-  layers: { airports: true, atc: true, weather: false, trails: true, borders: true, firs: true },
+  layers: { airports: true, atc: true, weather: false, trails: true, borders: true, firs: true, metar: false, daynight: true, heatmap: false },
   pollSec: 15,
   source: 'live',
   myVid: '',
@@ -115,6 +115,15 @@ interface State {
   measure: { lon: number; lat: number; label: string }[] | null;
   /** Airport shown on the full-screen board. */
   board: string | null;
+  /** Airline shown in the airline panel, and the airline the map is limited to (if any). */
+  airline: string | null;
+  /** Cinematic camera tour running. */
+  tour: boolean;
+  airlineFilter: string | null;
+  /** Embedded on another site (?embed=1): optional airport filter. */
+  embed: { airport: string | null; theme: 'light' | 'dark' | null } | null;
+  /** Flown track of the selected flight (for the profile charts). */
+  trackPts: { key: string; pts: import('../data/ivao').TrackPoint[] } | null;
   /** Traffic alerts for a verified controller. */
   conflicts: import('../lib/conflicts').Conflict[];
   atcSession: AtcSession | null;
@@ -164,6 +173,11 @@ export const useStore = create<State>((set, get) => ({
   logView: null,
   profileVid: null,
   conflicts: [],
+  trackPts: null,
+  airline: null,
+  tour: false,
+  airlineFilter: null,
+  embed: null,
   replay: null,
   board: null,
   measure: null,

@@ -162,7 +162,7 @@ export function Profile() {
             </ol>
           </Section>
           {mine && !flights.some((f) => f.touchdown) && <LinkCard />}
-          <p className="fineprint">Built from IVAO’s public data by the WebEye recorder. Anyone with the link can see this profile.</p>
+          <p className="fineprint">Built from IVAO’s public data by the Pulse recorder. Anyone with the link can see this profile.</p>
         </>
       )}
     </Panel>

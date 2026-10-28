@@ -114,7 +114,7 @@ export function FlightMap() {
           if (!alive) return;
           pts = since && source === 'recorder' ? [...pts, ...points] : points;
           controller?.setTrack(pts);
-          useStore.setState({ trackInfo: { key: selKey, points: pts.length, error: null, source, note } });
+          useStore.setState({ trackInfo: { key: selKey, points: pts.length, error: null, source, note }, trackPts: { key: selKey, pts } });
         })
         .catch((e) => alive && !pts.length && useStore.setState({ trackInfo: { key: selKey, points: 0, error: e instanceof Error ? e.message : String(e), source: null } }));
     };

@@ -13,7 +13,7 @@ export function openProfile(vid: number) {
   useStore.getState().setPanel('profile');
 }
 
-/** Download card for the WebEye Link sim add-on. */
+/** Download card for the Pulse Link sim add-on. */
 export function LinkCard() {
   return (
     <div className="link-card">
@@ -21,7 +21,7 @@ export function LinkCard() {
         <strong>Get exact landing rates</strong>
         <span className="badge badge-teal">MSFS · X-Plane</span>
       </div>
-      <p className="small">WebEye Link runs next to your sim and sends your real touchdown: fpm, G-force, bounces and fuel used. Run it, type your VID once, fly.</p>
+      <p className="small">Pulse Link runs next to your sim and sends your real touchdown: fpm, G-force, bounces and fuel used. Run it, type your VID once, fly.</p>
       <div className="link-card-actions">
         <a className="btn" href={LINK_EXE} rel="noopener">
           Download for Windows
@@ -59,7 +59,7 @@ export function FlightRow({ f, on, onClick }: { f: LoggedFlight; on: boolean; on
           <span>{f.distanceNm} NM</span>
           <span>FL{Math.round(f.maxAlt / 100)}</span>
           {lr && (
-            <span className={`log-rate ${lr.source}`} title={lr.source === 'sim' ? `Exact touchdown from WebEye Link (${td?.sim}).` : lr.source === 'seen' ? 'Vertical speed on the last report before touchdown, seen by this browser. An estimate.' : 'Average descent over the last minute before touchdown. A rough estimate, not the touchdown rate.'}>
+            <span className={`log-rate ${lr.source}`} title={lr.source === 'sim' ? `Exact touchdown from Pulse Link (${td?.sim}).` : lr.source === 'seen' ? 'Vertical speed on the last report before touchdown, seen by this browser. An estimate.' : 'Average descent over the last minute before touchdown. A rough estimate, not the touchdown rate.'}>
               {lr.fpm} fpm {lr.source === 'est' ? '(est.)' : `· ${grade(lr.fpm)}`}
               {lr.source === 'sim' && <i className="sim-tag">sim</i>}
             </span>
@@ -213,7 +213,7 @@ export function Logbook() {
               ))}
             </ol>
           </Section>
-          <p className="fineprint">Flights are logged by the WebEye recorder from IVAO’s public data, for every pilot, whether or not this page is open. Landing rates marked “sim” are exact, from WebEye Link; the others come from IVAO position reports and are estimates. <button className="link-btn" onClick={() => setPrefs({ myVid: '' })}>Change VID</button></p>
+          <p className="fineprint">Flights are logged by the Pulse recorder from IVAO’s public data, for every pilot, whether or not this page is open. Landing rates marked “sim” are exact, from Pulse Link; the others come from IVAO position reports and are estimates. <button className="link-btn" onClick={() => setPrefs({ myVid: '' })}>Change VID</button></p>
         </>
       )}
     </Panel>

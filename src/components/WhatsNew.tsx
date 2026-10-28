@@ -1,23 +1,23 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useStore } from '../state/store';
 import { enterReplay } from '../data/replay';
-import { IconBoard, IconClock, IconHeadset, IconLogo, IconReplay, IconRuler, IconRunway, IconSearch, IconStar, IconX } from './Icons';
+import { IconCloud, IconGauge, IconGlobe, IconLogo, IconPlane, IconReplay, IconSearch, IconSun, IconUser, IconX } from './Icons';
 
 const KEY = 'webeye2.seenVersion';
-const VERSION = '3.0';
+const VERSION = '3.1';
 
 const FEATURES: { icon: ReactNode; title: string; text: string; key?: string }[] = [
-  { icon: <IconReplay size={20} />, title: 'Time machine', text: 'Replay the last 18 hours of IVAO traffic at up to 300× speed. Scrub back to any minute.', key: 'Y' },
-  { icon: <IconBoard size={20} />, title: 'Airport boards', text: 'Split-flap departures and arrivals for any airport, full screen for a second monitor or your stream.' },
-  { icon: <IconStar size={20} />, title: 'Friends', text: 'Follow pilots and controllers. They glow purple on the map and you’re told when they connect, take off or land.', key: 'U' },
-  { icon: <IconClock size={20} />, title: 'Automatic logbook', text: 'Every flight logged on landing, with exact touchdown rate, G and fuel from the WebEye Link sim add-on.', key: 'B' },
-  { icon: <IconRunway size={20} />, title: 'Ground charts', text: 'Real-scale taxiways, runways and stands at any airport, plus taxi routes from ATC drawn turn by turn.' },
-  { icon: <IconHeadset size={20} />, title: 'ATC desk', text: 'Verified controllers send squawks and taxi routes, and get traffic conflict alerts in their airspace.', key: 'D' },
-  { icon: <IconRuler size={20} />, title: 'Distance tool', text: 'Measure distance, bearing and flying time between any points, aircraft or airports.', key: 'X' },
-  { icon: <IconSearch size={20} />, title: 'Command palette', text: 'Find any flight, controller, airport or action in a keystroke.', key: 'Ctrl K' },
+  { icon: <IconCloud size={20} />, title: 'Airport weather', text: 'Live METARs on the map: VFR, MVFR, IFR and LIFR at a glance, winds from zoom 6, full METAR on hover.' },
+  { icon: <IconSun size={20} />, title: 'Day and night', text: 'The night side of the Earth and twilight, moving in real time, plus a traffic heatmap for the world view.' },
+  { icon: <IconPlane size={20} />, title: 'Airlines & embeds', text: 'Every flight of an airline in one place, and a live map you can embed on your virtual airline’s website.' },
+  { icon: <IconGauge size={20} />, title: 'Flight profile', text: 'Altitude and speed charts for the whole flight, right in the aircraft panel.' },
+  { icon: <IconUser size={20} />, title: 'Stream overlay', text: 'A lower third for OBS showing your live flight, then your landing rate on touchdown. In My flight.' },
+  { icon: <IconGlobe size={20} />, title: 'Cinematic tour', text: 'The camera glides between flights in 3D on its own. Add H for clean footage.', key: 'O' },
+  { icon: <IconReplay size={20} />, title: 'Time machine', text: 'Replay the last 18 hours of IVAO traffic at up to 300×.', key: 'Y' },
+  { icon: <IconSearch size={20} />, title: 'Command palette', text: 'Find any flight, airline, controller, airport or action in a keystroke.', key: 'Ctrl K' },
 ];
 
-/** Shown once per major version: what WebEye can do now. */
+/** Shown once per major version: what Pulse can do now. */
 export function WhatsNew() {
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -45,7 +45,7 @@ export function WhatsNew() {
   if (!open) return null;
   return (
     <div className="wn-wrap" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <div className="wn glass" role="dialog" aria-label="What's new in IVAO WebEye 3.0">
+      <div className="wn glass" role="dialog" aria-label="What's new in IVAO Pulse 3.1">
         <button className="icon-btn wn-x" onClick={close} aria-label="Close">
           <IconX />
         </button>
@@ -54,8 +54,8 @@ export function WhatsNew() {
             <IconLogo />
           </span>
           <div>
-            <h2>IVAO WebEye 3.0</h2>
-            <p className="dim">The whole network, live, with tools you won’t find anywhere else.</p>
+            <h2>Welcome to IVAO Pulse 3.1</h2>
+            <p className="dim">WebEye 2 has a new name. The whole IVAO network, live, with tools you won’t find anywhere else.</p>
           </div>
         </div>
         <ul className="wn-grid">

@@ -164,7 +164,7 @@ function BoardScreen({ a }: { a: Airport }) {
           <BoardTable rows={arr} kind="arr" big limit={14} />
         </section>
       </div>
-      <footer className="bs-foot dim small">Live from IVAO · times are estimates from distance and groundspeed · IVAO WebEye</footer>
+      <footer className="bs-foot dim small">Live from IVAO · times are estimates from distance and groundspeed · IVAO Pulse</footer>
     </div>
   );
 }

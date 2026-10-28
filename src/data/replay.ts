@@ -1,4 +1,4 @@
-// Time machine: replays the last 18 hours of IVAO traffic from the WebEye recorder.
+// Time machine: replays the last 18 hours of IVAO traffic from the Pulse recorder.
 // The recorder keeps every pilot's position once a minute; we fetch 10-minute chunks
 // (edge-cached for everyone), interpolate between minutes and play them back at speed.
 import { useStore } from '../state/store';

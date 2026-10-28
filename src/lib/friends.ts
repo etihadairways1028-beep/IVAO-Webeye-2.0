@@ -31,7 +31,7 @@ function tell(msg: string) {
   st.notify(msg);
   if (st.prefs.friendNotify && 'Notification' in window && Notification.permission === 'granted' && document.hidden) {
     try {
-      new Notification('IVAO WebEye', { body: msg, icon: `${import.meta.env.BASE_URL}favicon.svg`, tag: msg });
+      new Notification('IVAO Pulse', { body: msg, icon: `${import.meta.env.BASE_URL}favicon.svg`, tag: msg });
     } catch {
       /* some browsers only allow notifications from a service worker */
     }

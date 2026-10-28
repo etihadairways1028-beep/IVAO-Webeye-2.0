@@ -19,6 +19,7 @@ export const SHORTCUTS: [string, string][] = [
   ['B · N · U', 'Logbook · Network stats · Friends'],
   ['Y', 'Time machine: replay the last 18 hours'],
   ['X', 'Measure distance and bearing'],
+  ['O', 'Cinematic tour (pair with H for filming)'],
   ['Ctrl + K', 'Command palette: find anything, do anything'],
   ['Space', 'Play / pause the replay'],
   ['Shift + F', 'Fullscreen'],

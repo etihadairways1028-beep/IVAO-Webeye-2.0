@@ -27,7 +27,7 @@ function Board({ rows, value, empty }: { rows: LeaderRow[]; value: (r: LeaderRow
   );
 }
 
-/** This week's top pilots and controllers on IVAO, from the WebEye recorder. */
+/** This week's top pilots and controllers on IVAO, from the Pulse recorder. */
 export function Leaderboard() {
   const [which, setWhich] = useState<'this' | 'last'>('this');
   const [data, setData] = useState<LBD | null>(null);
@@ -59,8 +59,8 @@ export function Leaderboard() {
           <Section title="Most hours flown">
             <Board rows={data.hours} value={(r) => `${hm(r.minutes ?? 0)} h`} empty="No flights logged yet this week." />
           </Section>
-          <Section title="Smoothest landings" aside={<span className="dim small">WebEye Link</span>}>
-            <Board rows={data.landings} value={(r) => `${r.fpm} fpm`} empty="No exact touchdowns yet: they come from the WebEye Link sim add-on." />
+          <Section title="Smoothest landings" aside={<span className="dim small">Pulse Link</span>}>
+            <Board rows={data.landings} value={(r) => `${r.fpm} fpm`} empty="No exact touchdowns yet: they come from the Pulse Link sim add-on." />
           </Section>
           <Section title="Most flights">
             <Board rows={data.flights} value={(r) => `${r.flights}`} empty="No flights logged yet this week." />

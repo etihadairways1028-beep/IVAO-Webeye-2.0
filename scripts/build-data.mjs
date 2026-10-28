@@ -1,4 +1,4 @@
-// Builds the static geodata bundled with WebEye 2.0.
+// Builds the static geodata bundled with Pulse 2.0.
 //   Airports & runways: OurAirports (public domain) https://ourairports.com/data/
 //   Coastlines / borders: Natural Earth 1:50m (public domain) https://www.naturalearthdata.com/
 // Usage: node scripts/build-data.mjs <dir-with-airports.csv,runways.csv,land.geojson,countries.geojson>

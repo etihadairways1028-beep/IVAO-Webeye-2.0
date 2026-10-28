@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import './styles/global.css';
 import { initInstall } from './lib/install';
+import { readEmbedParams } from './components/Embed';
+import { StreamOverlay } from './components/StreamOverlay';
 
 initInstall();
 // Apply the panel style before the map is created, so it sizes to the full window at once.
@@ -15,8 +17,11 @@ try {
   document.documentElement.dataset.glass = '1';
 }
 
+readEmbedParams();
+
+// ?overlay=<VID>: streamer overlay instead of the map.
+const q = new URLSearchParams(location.search);
+const ov = q.get('overlay');
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
+  <StrictMode>{ov && /^\d{3,8}$/.test(ov) ? <StreamOverlay vid={Number(ov)} style={q.get('style') === 'card' ? 'card' : 'bar'} demo={q.get('demo') === '1'} /> : <App />}</StrictMode>,
 );

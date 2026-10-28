@@ -1,5 +1,5 @@
 /* ───────────────────────────────────────────────────────────────
-   WebEye — flat, docked, instrument-style UI.
+   Pulse — flat, docked, instrument-style UI.
    Solid surfaces, hairline borders, small radii, dense type.
    ─────────────────────────────────────────────────────────────── */
 :root {
@@ -2674,7 +2674,7 @@ button.bl-row:hover,
   color: var(--ink);
 }
 
-/* ───────── Leaderboards, profile, badges, WebEye Link */
+/* ───────── Leaderboards, profile, badges, Pulse Link */
 .board-seg {
   margin: 4px 0 6px;
 }
@@ -3696,4 +3696,241 @@ html[data-theme='light'][data-glass='1'] .wn {
   .bs-cols h2 {
     font-size: 15px;
   }
+}
+.tip-metar {
+  max-width: 280px;
+  white-space: normal;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.wx-legend {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 4px;
+}
+.wx-legend i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-left: 4px;
+}
+.profile-charts .pc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12px;
+  color: var(--ink-2);
+  margin-top: 6px;
+}
+
+/* ───────── Embedded map (?embed=1) */
+html[data-embed='1'] :is(.topbar, .rail, .telebar, .banner, .chart-chip, .replay, .panel-left) {
+  display: none !important;
+}
+html[data-embed='1'] .map {
+  inset: 0 !important;
+}
+html[data-embed='1'] .mapctl {
+  top: 10px !important;
+}
+.embed-badge {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px 7px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 12.5px;
+}
+.embed-badge svg {
+  width: 22px;
+  height: 22px;
+  color: var(--accent);
+}
+.embed-code {
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 11px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  margin: 8px 0;
+  color: var(--ink-2);
+}
+
+/* ───────── Stream overlay (?overlay=VID) — transparent for OBS */
+html[data-overlay='1'],
+html[data-overlay='1'] body {
+  background: transparent !important;
+}
+.ov {
+  position: fixed;
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  color: #f4f7fb;
+  font-family: var(--font);
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(120deg, rgba(10, 16, 26, 0.86), rgba(14, 24, 38, 0.78));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.ov-card {
+  left: auto;
+  right: 24px;
+  bottom: 24px;
+  width: 420px;
+  flex-wrap: wrap;
+}
+.ov-brand {
+  width: 64px;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--on-accent);
+  text-shadow: none;
+}
+.ov-brand svg {
+  width: 30px;
+  height: 30px;
+}
+.ov-main {
+  flex: 1;
+  padding: 12px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.ov-top {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.ov-cs {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.ov-type {
+  color: #9fd8ff;
+  font-size: 15px;
+}
+.ov-phase {
+  margin-left: auto;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #7ee8dc;
+}
+.ov-sub {
+  color: #b9c6d4;
+}
+.ov-route {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ov-apt {
+  font-size: 17px;
+  font-weight: 700;
+}
+.ov-city {
+  font-size: 12px;
+  color: #b9c6d4;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ov-bar {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.18);
+  min-width: 80px;
+}
+.ov-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #14b8a6, #7ee8dc);
+}
+.ov-plane {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  display: grid;
+}
+.ov-cells {
+  display: flex;
+  align-items: stretch;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+.ov-cells > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 18px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  min-width: 92px;
+}
+.ov-cells span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #9fb0c3;
+  font-family: var(--font);
+}
+.ov-cells b {
+  font-size: 20px;
+  font-weight: 600;
+}
+.ov-card .ov-cells {
+  width: 100%;
+  border-left: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.ov-card .ov-cells > div {
+  flex: 1;
+  padding: 10px 12px;
+  min-width: 0;
+}
+.ov-card .ov-brand {
+  width: 52px;
+}
+.tour-chip {
+  position: absolute;
+  top: calc(var(--top) + 22px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 22;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+}
+html[data-film='1'] .tour-chip {
+  display: none;
 }

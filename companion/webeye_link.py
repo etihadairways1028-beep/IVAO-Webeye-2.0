@@ -1,11 +1,11 @@
 """
-WebEye Link: sends your exact touchdown to your IVAO WebEye logbook.
+Pulse Link: sends your exact touchdown to your IVAO Pulse logbook.
 
 Runs next to Microsoft Flight Simulator (2020 / 2024, through SimConnect) or X-Plane
 (11 / 12, through its built-in UDP data output, nothing to install in X-Plane).
 It watches for the moment the wheels touch down and sends:
   landing rate (fpm), G-force, airspeed, pitch, bank, bounces and fuel used
-to the WebEye recorder, which adds it to the flight in your logbook.
+to the Pulse recorder, which adds it to the flight in your logbook.
 
 Only your VID, the touchdown numbers and your position at touchdown are sent. The recorder
 accepts a touchdown only when that VID is flying on IVAO at that position.
@@ -22,7 +22,7 @@ import urllib.request
 
 VERSION = "1.0.0"
 RECORDER = os.environ.get("WEBEYE_RECORDER", "https://webeye-recorder.webeyepagesdev.workers.dev")
-CONFIG_DIR = os.path.join(os.environ.get("APPDATA") or os.path.expanduser("~"), "WebEyeLink")
+CONFIG_DIR = os.path.join(os.environ.get("APPDATA") or os.path.expanduser("~"), "PulseLink")
 CONFIG = os.path.join(CONFIG_DIR, "config.json")
 HZ = 25  # samples per second
 
@@ -189,7 +189,7 @@ def connect():
 
 
 def post(path, body):
-    req = urllib.request.Request(RECORDER + path, data=json.dumps(body).encode(), headers={"Content-Type": "application/json", "User-Agent": f"WebEyeLink/{VERSION}"}, method="POST")
+    req = urllib.request.Request(RECORDER + path, data=json.dumps(body).encode(), headers={"Content-Type": "application/json", "User-Agent": f"PulseLink/{VERSION}"}, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
             return r.status, json.loads(r.read() or b"{}")
@@ -262,17 +262,17 @@ class Watcher:
         for attempt in range(3):
             code, res = post("/touchdown", body)
             if code == 200:
-                say(f"Sent to your WebEye logbook ({res.get('callsign', '')}). It appears a minute or two after IVAO sees you land.")
+                say(f"Sent to your Pulse logbook ({res.get('callsign', '')}). It appears a minute or two after IVAO sees you land.")
                 return
             if code in (400, 404, 409):
                 say(f"Not saved: {res.get('error', code)}")
                 return
             time.sleep(5)
-        say(f"Couldn't reach WebEye: {res.get('error', code)}")
+        say(f"Couldn't reach Pulse: {res.get('error', code)}")
 
 
 def main():
-    print(f"WebEye Link {VERSION}  ·  exact landing rates for your IVAO WebEye logbook\n")
+    print(f"Pulse Link {VERSION}  ·  exact landing rates for your IVAO Pulse logbook\n")
     vid = ask_vid()
     say(f"VID {vid}. Looking for MSFS or X-Plane… (start the sim; this window can stay open)")
     sim = None

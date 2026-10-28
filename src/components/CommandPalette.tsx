@@ -6,6 +6,9 @@ import { enterReplay, exitReplay } from '../data/replay';
 import { openBoard } from './Board';
 import { openProfile } from './Logbook';
 import { showWhatsNew } from './WhatsNew';
+import { startTour, stopTour } from '../lib/tour';
+import { AIRLINES } from '../data/airlines';
+import { openAirline } from './AirlinePanel';
 import { IconBoard, IconClock, IconGlobe, IconHeadset, IconMoon, IconPlane, IconReplay, IconRuler, IconRunway, IconSearch, IconStar, IconTower, IconUser } from './Icons';
 
 interface Item {
@@ -68,7 +71,8 @@ export function CommandPalette() {
       { id: 'radar', group: 'Actions', icon: <IconTower size={16} />, title: st.prefs.mapStyle === 'radar' ? 'Leave radar mode' : 'Radar scope mode', sub: 'R', run: () => st.setPrefs({ mapStyle: st.prefs.mapStyle === 'radar' ? st.prefs.lastNonRadarStyle : 'radar' }) },
       { id: 'film', group: 'Actions', icon: <IconGlobe size={16} />, title: 'Filming mode (hide the interface)', sub: 'H', run: () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'h' })) },
       { id: 'fs', group: 'Actions', icon: <IconGlobe size={16} />, title: 'Fullscreen', sub: 'Shift+F', run: toggleFullscreen },
-      { id: 'whatsnew', group: 'Actions', icon: <IconGlobe size={16} />, title: 'What’s new in WebEye 3.0', run: showWhatsNew },
+      { id: 'tour', group: 'Actions', icon: <IconGlobe size={16} />, title: st.tour ? 'Stop the cinematic tour' : 'Cinematic tour: the camera flies between flights', sub: 'O', run: () => (st.tour ? stopTour() : startTour()) },
+      { id: 'whatsnew', group: 'Actions', icon: <IconGlobe size={16} />, title: 'What’s new in Pulse 3.1', run: showWhatsNew },
       { id: 'world', group: 'Actions', icon: <IconGlobe size={16} />, title: 'World view', sub: 'W', run: () => st.camera_({ type: 'world' }) },
       ...PANELS.map((p) => ({ id: `panel-${p.id}`, group: 'Open', icon: p.icon, title: p.name, sub: p.key, run: () => st.setPanel(p.id) })),
     ];
@@ -89,10 +93,16 @@ export function CommandPalette() {
       out.push({ id: `a${a.icao}`, group: 'Airports', icon: <IconRunway size={16} />, title: <span><span className="mono">{a.icao}</span> {a.name}</span>, sub: a.city, run: () => selectAirport(a.icao) });
       if (out.filter((x) => x.group === 'Boards').length < 2) out.push({ id: `b${a.icao}`, group: 'Boards', icon: <IconBoard size={16} />, title: `${a.icao} departures & arrivals board`, sub: a.name, run: () => openBoard(a.icao) });
     }
+    const airlineHits = Object.entries(AIRLINES).filter(([code, name]) => code === s.slice(0, 3) || name.toUpperCase().includes(s)).slice(0, 3);
+    for (const [code, name] of airlineHits) {
+      const n = flights.filter((f) => f.callsign.startsWith(code)).length;
+      out.push({ id: `al${code}`, group: 'Airlines', icon: <IconPlane size={16} />, title: <span><span className="mono">{code}</span> {name}</span>, sub: `${n} online`, run: () => openAirline(code) });
+    }
+    if (/^[A-Z]{3}$/.test(s) && !AIRLINES[s] && flights.some((f) => f.callsign.startsWith(s))) out.push({ id: `al${s}`, group: 'Airlines', icon: <IconPlane size={16} />, title: <span className="mono">{s}</span>, sub: 'virtual airline / callsign prefix', run: () => openAirline(s) });
     if (/^\d{3,8}$/.test(s)) out.push({ id: `u${s}`, group: 'Pilots', icon: <IconUser size={16} />, title: `Profile of VID ${s}`, sub: 'Logbook, hours and badges', run: () => openProfile(Number(s)) });
     const ql = q.trim().toLowerCase();
     out.push(...actions.filter((a) => String(a.title).toLowerCase().includes(ql)));
-    const order = ['Flights', 'ATC', 'Airports', 'Boards', 'Pilots', 'Actions', 'Open'];
+    const order = ['Flights', 'Airlines', 'ATC', 'Airports', 'Boards', 'Pilots', 'Actions', 'Open'];
     return out.map((x, n) => ({ x, n })).sort((a, b) => order.indexOf(a.x.group) - order.indexOf(b.x.group) || a.n - b.n).map((o) => o.x);
   }, [open, q, flights, controllers]);
 
@@ -110,6 +120,7 @@ export function CommandPalette() {
           <IconSearch size={18} />
           <input
             ref={input}
+            autoFocus
             value={q}
             placeholder="Search flights, ATC, airports, VIDs… or type a command"
             onChange={(e) => (setQ(e.target.value), setI(0))}
