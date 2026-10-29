@@ -460,6 +460,7 @@ export class MapController {
     this.pushConflicts();
   }
   private conflictPushed = 0;
+  private tailsAt = 0;
   private pushConflicts() {
     this.conflictPushed = Date.now();
     const features: GeoJSON.Feature[] = [];
@@ -599,7 +600,15 @@ export class MapController {
     if (!this.map.getSource('aircraft')) return;
     const now = Date.now();
     const sel = this.selection?.kind === 'flight' ? this.selection.key : null;
-    const features: GeoJSON.Feature[] = this.flights.map((f) => ({
+    // Zoomed in: only aircraft around the view, so we can afford several updates a second.
+    let list = this.flights;
+    if (this.map.getZoom() >= 6 && !this.prefs.globe) {
+      const b = this.map.getBounds();
+      const padX = (b.getEast() - b.getWest()) * 0.35, padY = (b.getNorth() - b.getSouth()) * 0.35;
+      const w = b.getWest() - padX, e = b.getEast() + padX, so = b.getSouth() - padY, n = b.getNorth() + padY;
+      list = this.flights.filter((f) => f.key === sel || (f.lat >= so && f.lat <= n && ((f.lon >= w && f.lon <= e) || (f.lon + 360 >= w && f.lon + 360 <= e) || (f.lon - 360 >= w && f.lon - 360 <= e))));
+    }
+    const features: GeoJSON.Feature[] = list.map((f) => ({
       type: 'Feature',
       id: f.sessionId > 0 ? f.sessionId : undefined,
       geometry: { type: 'Point', coordinates: this.pos(f, now) },
@@ -1107,11 +1116,15 @@ export class MapController {
       }
       this.pushAircraft();
       if (this.conflicts.length && Date.now() - this.conflictPushed > 1500) this.pushConflicts();
-      if (zoom >= 3.5) this.pushTails(); // keep tails attached to the moving aircraft
+      if (zoom >= 3.5 && Date.now() - this.tailsAt > 900) {
+        this.tailsAt = Date.now();
+        this.pushTails(); // keep tails attached to the moving aircraft (about once a second)
+      }
       if (f && !f.onGround) this.pushRoute();
     }
-    const fast = this.follow || zoom >= 9;
-    this.tickHandle = window.setTimeout(this.tick, fast ? 500 : 1000);
+    // Smooth motion when zoomed in (viewport-limited), calmer at world view.
+    const interval = zoom >= 6 && !this.prefs.globe ? 200 : this.follow || zoom >= 4 ? 500 : 1000;
+    this.tickHandle = window.setTimeout(this.tick, interval);
   }
 
   private bindEvents() {
@@ -1206,6 +1219,7 @@ export class MapController {
     };
     m.on('moveend', emitView);
     m.on('moveend', () => this.loadMetars());
+    m.on('moveend', () => this.pushAircraft()); // fill in aircraft that came into view
     m.on('load', emitView);
     m.on('dragstart', () => this.cb.onUserMove());
     m.on('error', (e) => {

@@ -3963,3 +3963,82 @@ html[data-film='1'] .tour-chip {
   border-color: var(--ink);
   box-shadow: 0 0 0 2px var(--surface), 0 0 12px var(--sw);
 }
+
+/* ───────── Flight panel polish */
+.panel-actions {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+.actions-spacer {
+  flex: 1;
+}
+.chip-btn.icon-only {
+  width: 34px;
+  padding: 0;
+  justify-content: center;
+}
+.essentials .ess {
+  padding: 10px 4px 9px;
+  min-width: 0;
+}
+.essentials .ess-v {
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ess-u {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--dim);
+  margin-left: 3px;
+  letter-spacing: 0.02em;
+}
+.track-chip {
+  align-items: flex-start;
+}
+.track-chip .lg {
+  margin-top: 7px;
+}
+.tc-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tc-why {
+  font-size: 11.5px;
+  color: var(--dim);
+}
+.track-chip .small {
+  white-space: nowrap;
+  margin-top: 1px;
+}
+@media (min-width: 760px) {
+  .has-right .telebar {
+    display: none;
+  }
+}
+.settings-links {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: -2px 0 6px;
+}
+/* Over satellite imagery the glass would pick up the ground's colour: keep it neutral and darker. */
+html[data-basemap='satellite'][data-glass='1'] {
+  --glass-fill: linear-gradient(155deg, rgba(22, 30, 44, 0.72), rgba(10, 14, 22, 0.74));
+  --glass-blur: blur(26px) saturate(115%) brightness(0.92);
+}
+html[data-basemap='satellite'][data-theme='light'][data-glass='1'] {
+  --glass-fill: linear-gradient(155deg, rgba(250, 252, 254, 0.82), rgba(240, 244, 248, 0.8));
+  --glass-blur: blur(26px) saturate(110%);
+}
+.essentials .ess-v {
+  font-size: 15.5px;
+  letter-spacing: -0.03em;
+}
+.essentials .ess-u {
+  font-size: 9.5px;
+  margin-left: 2px;
+}

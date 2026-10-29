@@ -40,6 +40,12 @@ export function SettingsPanel() {
         </button>
       </div>
 
+      <div className="settings-links">
+        <button className="link-btn" onClick={() => setOverlay('about')}>About IVAO Pulse</button>
+        <button className="link-btn" onClick={() => (setOverlay(null), window.dispatchEvent(new Event('webeye:whatsnew')))}>What’s new</button>
+        <button className="link-btn" onClick={() => (setOverlay(null), document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen())}>Fullscreen</button>
+      </div>
+
       <div className="pop-label">Status</div>
       <StatusSection />
 

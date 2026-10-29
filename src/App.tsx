@@ -275,6 +275,10 @@ export default function App() {
   }, []);
   const embedTheme = useStore((s) => s.embed?.theme ?? null);
   const theme = embedTheme ?? (themePref === 'system' ? (sysLight ? 'light' : 'dark') : themePref);
+  const mapStyleId = useStore((s) => s.prefs.mapStyle);
+  useEffect(() => {
+    document.documentElement.dataset.basemap = mapStyleId;
+  }, [mapStyleId]);
   const accent = useStore((s) => s.prefs.accent);
   useEffect(() => {
     applyAccent(accent, theme === 'light');

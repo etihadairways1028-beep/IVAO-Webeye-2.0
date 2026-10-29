@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../state/store';
 import { getAirport } from '../data/airports';
 import { selectAirport } from '../lib/actions';
-import { ago, dash, fmtAlt, fmtDuration, fmtHdg, fmtKt, fmtLat, fmtLon, fmtNm, fmtVs, fmtZulu, RULES_LABEL, WAKE_LABEL } from '../lib/format';
+import { ago, dash, fmtDuration, fmtLat, fmtLon, fmtNm, fmtZulu, RULES_LABEL, WAKE_LABEL } from '../lib/format';
 import { distanceNm } from '../lib/geo';
 import { Badge, KV, Panel } from './ui';
 import { IconClock, IconCrosshair, IconFollow, IconPlane, IconRoute, IconShare } from './Icons';
@@ -56,6 +56,18 @@ function RouteStrip({ f, pr }: { f: Flight; pr: Progress }) {
   );
 }
 
+function Ess({ k, v, u, cls = '' }: { k: string; v: string; u: string; cls?: string }) {
+  return (
+    <div className="ess">
+      <span className="ess-k">{k}</span>
+      <span className={`ess-v mono ${cls}`}>
+        {v}
+        {u && <small className="ess-u">{u}</small>}
+      </span>
+    </div>
+  );
+}
+
 export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
   const follow = useStore((s) => s.follow);
   const showRoute = useStore((s) => s.showRoute);
@@ -103,15 +115,16 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
           <button className={`chip-btn ${follow ? 'on' : ''}`} aria-pressed={follow} onClick={() => st.setFollow(!follow)} title="Follow aircraft (F)">
             <IconFollow size={15} /> {follow ? 'Following' : 'Follow'}
           </button>
-          <button className="chip-btn" onClick={() => st.camera_({ type: 'fly', center: [f.lon, f.lat] })} title="Centre on aircraft (C)">
-            <IconCrosshair size={15} /> Centre
-          </button>
           <button className={`chip-btn ${showRoute ? 'on' : ''}`} aria-pressed={showRoute} onClick={() => st.setShowRoute(!showRoute)} title="Show route">
             <IconRoute size={15} /> Route
           </button>
-          {!f.demo && <FriendStar vid={f.vid} name={f.callsign} />}
-          <button className="chip-btn" onClick={() => shareSelection(`${f.callsign} on IVAO Pulse`, { kind: 'flight', key: f.key })} title="Copy a link to this flight">
-            <IconShare size={15} /> Share
+          <span className="actions-spacer" />
+          <button className="chip-btn icon-only" onClick={() => st.camera_({ type: 'fly', center: [f.lon, f.lat] })} title="Centre on aircraft (C)" aria-label="Centre on aircraft">
+            <IconCrosshair size={16} />
+          </button>
+          {!f.demo && <FriendStar vid={f.vid} name={f.callsign} compact />}
+          <button className="chip-btn icon-only" onClick={() => shareSelection(`${f.callsign} on IVAO Pulse`, { kind: 'flight', key: f.key })} title="Copy a link to this flight" aria-label="Share this flight">
+            <IconShare size={16} />
           </button>
         </>
       }
@@ -120,22 +133,10 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
 
       {/* The essentials, readable at a glance */}
       <div className="essentials">
-        <div className="ess">
-          <span className="ess-k">Altitude</span>
-          <span className={`ess-v mono ${trend}`}>{f.onGround ? 'GND' : fmtAlt(f.altitude, transition)}</span>
-        </div>
-        <div className="ess">
-          <span className="ess-k">Speed</span>
-          <span className="ess-v mono">{fmtKt(f.groundSpeed)}</span>
-        </div>
-        <div className="ess">
-          <span className="ess-k">Heading</span>
-          <span className="ess-v mono">{fmtHdg(f.heading)}</span>
-        </div>
-        <div className="ess">
-          <span className="ess-k">Vertical</span>
-          <span className={`ess-v mono ${trend}`}>{fmtVs(f.verticalSpeed)}</span>
-        </div>
+        <Ess k="Altitude" v={f.onGround ? 'GND' : f.altitude == null ? '—' : f.altitude >= transition ? `FL${String(Math.round(f.altitude / 100)).padStart(3, '0')}` : Math.round(f.altitude).toLocaleString('en-US')} u={f.onGround || f.altitude == null || f.altitude >= transition ? '' : 'ft'} cls={trend} />
+        <Ess k="Speed" v={f.groundSpeed == null ? '—' : String(Math.round(f.groundSpeed))} u="kt" />
+        <Ess k="Heading" v={f.heading == null ? '—' : `${String(Math.round(f.heading) % 360).padStart(3, '0')}°`} u="" />
+        <Ess k="Vertical" v={f.verticalSpeed == null ? '—' : Math.abs(f.verticalSpeed) < 100 ? 'level' : `${f.verticalSpeed > 0 ? '+' : '−'}${Math.abs(Math.round(f.verticalSpeed / 50) * 50).toLocaleString('en-US')}`} u={f.verticalSpeed != null && Math.abs(f.verticalSpeed) >= 100 ? 'fpm' : ''} cls={trend} />
       </div>
       <div className="ess-meta">
         {f.state && <Badge tone="blue" title="Flight state reported by IVAO">{f.state}</Badge>}
@@ -145,7 +146,10 @@ export function AircraftDetailsPanel({ flight: f }: { flight: Flight }) {
 
       <div className={`track-chip ${trackOk ? 'ok' : trackInfo ? 'warn' : ''}`} title={trackTitle}>
         <span className="lg lg-trail" />
-        {!trackInfo ? 'Loading flown track…' : trackOk ? (trackInfo.source === 'recorder' ? 'Flown track from pushback' : 'Flown track from the gate') : 'Flown track: only since you opened the page'}
+        <span className="tc-text">
+          {!trackInfo ? 'Loading flown track…' : trackOk ? (trackInfo.source === 'recorder' ? 'Flown track from pushback' : 'Flown track from the gate') : 'Flown track: only since you opened the page'}
+          {trackInfo && !trackOk && <span className="tc-why">{(trackInfo.note ?? trackInfo.error ?? '').replace(/^the /, 'The ')}</span>}
+        </span>
         <span className="dim small">colour = altitude</span>
       </div>
 

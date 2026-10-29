@@ -70,12 +70,12 @@ export function FriendsPanel() {
 }
 
 /** Star toggle used on flight, controller and profile panels. */
-export function FriendStar({ vid, name }: { vid: number; name: string }) {
+export function FriendStar({ vid, name, compact = false }: { vid: number; name: string; compact?: boolean }) {
   const on = useStore((s) => s.prefs.friends.some((f) => f.vid === vid));
   if (!vid) return null;
   return (
-    <button className={`chip-btn ${on ? 'on star-on' : ''}`} aria-pressed={on} onClick={() => toggleFriend(vid, name)} title={on ? 'Unfollow' : 'Follow: get told when they connect, take off or land'}>
-      <IconStar size={15} filled={on} /> {on ? 'Friend' : 'Add friend'}
+    <button className={`chip-btn ${compact ? 'icon-only' : ''} ${on ? 'on star-on' : ''}`} aria-pressed={on} aria-label={on ? `Remove ${name} from friends` : `Add ${name} as a friend`} onClick={() => toggleFriend(vid, name)} title={on ? 'Friend: click to remove' : 'Add friend: get told when they connect, take off or land'}>
+      <IconStar size={compact ? 16 : 15} filled={on} /> {!compact && (on ? 'Friend' : 'Add friend')}
     </button>
   );
 }

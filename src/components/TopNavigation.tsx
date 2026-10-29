@@ -2,10 +2,9 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../state/store';
 import { IconReplay } from './Icons';
 import { enterReplay, exitReplay } from '../data/replay';
-import { IconExpand, IconImport, IconInfo, IconLayers, IconLogo, IconMoon, IconRadar, IconSearch, IconSettings, IconShrink, IconSun } from './Icons';
+import { IconImport, IconLayers, IconLogo, IconRadar, IconSearch, IconSettings } from './Icons';
 import { useInstall } from '../lib/install';
 import { FlightSearch } from './FlightSearch';
-import { toggleFullscreen } from '../lib/actions';
 import { ago, fmtZulu } from '../lib/format';
 
 function useNow(ms = 1000) {
@@ -57,19 +56,11 @@ export function TopNavigation({ visibleCount }: { visibleCount: number }) {
   const overlay = useStore((s) => s.overlay);
   const setOverlay = useStore((s) => s.setOverlay);
   const inst = useInstall();
-  const themePref = useStore((s) => s.prefs.theme);
-  const isLight = themePref === 'light' || (themePref === 'system' && typeof window !== 'undefined' && document.documentElement.dataset.theme === 'light');
   const mapStyle = useStore((s) => s.prefs.mapStyle);
   const lastStyle = useStore((s) => s.prefs.lastNonRadarStyle);
   const setPrefs = useStore((s) => s.setPrefs);
-  const [fs, setFs] = useState(!!document.fullscreenElement);
   const [mobileSearch, setMobileSearch] = useState(false);
   const now = useNow(1000);
-  useEffect(() => {
-    const h = () => setFs(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', h);
-    return () => document.removeEventListener('fullscreenchange', h);
-  }, []);
   const hasData = status === 'live' || status === 'stale' || status === 'demo' || status === 'replay';
   const replay = useStore((s) => !!s.replay);
   const demo = status === 'demo';
@@ -118,17 +109,8 @@ export function TopNavigation({ visibleCount }: { visibleCount: number }) {
             <IconImport />
           </button>
         )}
-        <button className="icon-btn" aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'} title={isLight ? 'Dark mode' : 'Light mode'} onClick={() => setPrefs({ theme: isLight ? 'dark' : 'light' })}>
-          {isLight ? <IconMoon /> : <IconSun />}
-        </button>
-        <button className={`icon-btn ${overlay === 'about' ? 'on' : ''}`} aria-label="About IVAO Pulse" title="About" aria-expanded={overlay === 'about'} onClick={() => setOverlay(overlay === 'about' ? null : 'about')}>
-          <IconInfo />
-        </button>
         <button className={`icon-btn ${overlay === 'settings' ? 'on' : ''}`} aria-label="Settings" title="Settings" aria-expanded={overlay === 'settings'} onClick={() => setOverlay(overlay === 'settings' ? null : 'settings')}>
           <IconSettings />
-        </button>
-        <button className="icon-btn hide-mobile" aria-label={fs ? 'Exit fullscreen' : 'Fullscreen'} title="Fullscreen (Shift+F)" onClick={toggleFullscreen}>
-          {fs ? <IconShrink /> : <IconExpand />}
         </button>
         <div className="zulu mono" title="Coordinated Universal Time">
           {fmtZulu(now, true).replace('Z', '')}
