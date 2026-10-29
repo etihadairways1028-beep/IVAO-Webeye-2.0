@@ -77,6 +77,7 @@ export function MapLayerControls() {
         onChange={(v) => setLayer('metar', v)}
       />
       <Toggle icon={<IconSun size={16} />} label="Day and night" hint="Night side and twilight, updated every minute" checked={layers.daynight} onChange={(v) => setLayer('daynight', v)} />
+      <Toggle icon={<IconRunway size={16} />} label="Busiest airports" hint="Top 12 airports and their traffic (world view)" checked={layers.busy ?? true} onChange={(v) => setLayer('busy', v)} />
       <Toggle icon={<IconRadar size={16} />} label="Traffic heatmap" hint="Where the network is busiest (world view)" checked={layers.heatmap} onChange={(v) => setLayer('heatmap', v)} />
       <Toggle icon={<IconTrail size={16} />} label="Trails" hint="Selected aircraft, plus history dots in radar mode" checked={layers.trails} onChange={(v) => setLayer('trails', v)} />
 

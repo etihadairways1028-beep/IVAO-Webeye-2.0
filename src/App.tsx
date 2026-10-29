@@ -1,26 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { FlightMap, getMapController } from './map/FlightMap';
 import { passesFilters, useStore, type Panel as PanelId } from './state/store';
 import { TopNavigation } from './components/TopNavigation';
 import { TrafficDirectory } from './components/TrafficDirectory';
 import { AirportExplorer } from './components/AirportExplorer';
 import { ATCStations, AtcDetailsPanel } from './components/ATCStations';
-import { MyFlight } from './components/MyFlight';
 import { AircraftDetailsPanel } from './components/AircraftDetailsPanel';
 import { MapLayerControls } from './components/MapLayerControls';
 import { SettingsPanel, SHORTCUTS } from './components/SettingsPanel';
 import { MapControls } from './components/MapControls';
 import { TelemetryBar } from './components/TelemetryBar';
-import { About } from './components/About';
 import { ChartChip } from './components/ChartChip';
 import { IconLogo } from './components/Icons';
 import { IconAlert, IconHeadset, IconPlane, IconRunway, IconTower, IconUser, IconX } from './components/Icons';
-import { AtcDesk } from './components/AtcDesk';
 import { Logbook } from './components/Logbook';
-import { StatsPanel } from './components/StatsPanel';
-import { Profile } from './components/Profile';
 import { FriendsPanel } from './components/Friends';
 import { AirlinePanel } from './components/AirlinePanel';
+import { NowPanel } from './components/NowPanel';
 import { EmbedBadge } from './components/Embed';
 import { TourChip } from './components/TourChip';
 import { startTour, stopTour, useTour } from './lib/tour';
@@ -33,13 +29,20 @@ import { MeasureCard } from './components/MeasureCard';
 import { CommandPalette } from './components/CommandPalette';
 import { WhatsNew } from './components/WhatsNew';
 import { enterReplay, exitReplay, setReplay } from './data/replay';
-import { IconClock, IconGauge } from './components/Icons';
+import { IconClock, IconPulse } from './components/Icons';
 import { usePilotClearance } from './lib/clearance';
 import { useConflictAlerts } from './lib/conflicts';
 import { loadAirports } from './data/airports';
 import { startFeed, retryNow } from './data/feed';
 import { toggleFullscreen } from './lib/actions';
 import { useShareLinks } from './lib/share';
+
+// Panels opened on demand load in their own small chunks, so the map appears sooner.
+const AtcDesk = lazy(() => import('./components/AtcDesk').then((m) => ({ default: m.AtcDesk })));
+const StatsPanel = lazy(() => import('./components/StatsPanel').then((m) => ({ default: m.StatsPanel })));
+const Profile = lazy(() => import('./components/Profile').then((m) => ({ default: m.Profile })));
+const About = lazy(() => import('./components/About').then((m) => ({ default: m.About })));
+const MyFlight = lazy(() => import('./components/MyFlight').then((m) => ({ default: m.MyFlight })));
 
 function NavRail() {
   const panel = useStore((s) => s.panel);
@@ -59,6 +62,7 @@ function NavRail() {
     return n;
   });
   const items: { id: PanelId; label: string; icon: React.ReactNode; badge?: string | number; key: string }[] = [
+    { id: 'now', label: 'Now', icon: <IconPulse size={20} />, key: '1' },
     { id: 'traffic', label: 'Traffic', icon: <IconPlane size={20} />, key: 'T' },
     { id: 'airports', label: 'Airports', icon: <IconRunway size={20} />, key: 'A' },
     { id: 'atc', label: 'ATC', icon: <IconTower size={20} />, badge: atcN || undefined, key: 'S' },
@@ -66,7 +70,6 @@ function NavRail() {
     { id: 'atcdesk', label: 'ATC desk', icon: <IconHeadset size={20} />, badge: alerts ? `!${alerts}` : atcOn ? '✓' : undefined, key: 'D' },
     { id: 'friends', label: 'Friends', icon: <IconStar size={20} />, badge: friendsOn || undefined, key: 'U' },
     { id: 'logbook', label: 'Logbook', icon: <IconClock size={20} />, key: 'B' },
-    { id: 'stats', label: 'Stats', icon: <IconGauge size={20} />, key: 'N' },
   ];
   return (
     <nav className="rail glass" aria-label="Views">
@@ -163,7 +166,7 @@ function useShortcuts() {
       const sel = s.selection;
       const f = sel?.kind === 'flight' ? s.flightMap.get(sel.key) : undefined;
       const k = e.key;
-      const panels: Record<string, PanelId> = { t: 'traffic', a: 'airports', s: 'atc', p: 'myflight', d: 'atcdesk', b: 'logbook', n: 'stats', u: 'friends' };
+      const panels: Record<string, PanelId> = { t: 'traffic', a: 'airports', s: 'atc', p: 'myflight', d: 'atcdesk', b: 'logbook', n: 'stats', u: 'friends', '1': 'now' };
       if (k === 'Escape') {
         if (s.measure) useStore.setState({ measure: null });
         else if (s.overlay) s.setOverlay(null);
@@ -308,13 +311,14 @@ export default function App() {
       {panel === 'traffic' && <TrafficDirectory visible={visible} />}
       {panel === 'airports' && <AirportExplorer />}
       {panel === 'atc' && <ATCStations />}
-      {panel === 'myflight' && <MyFlight />}
-      {panel === 'atcdesk' && <AtcDesk />}
+      {panel === 'myflight' && <Suspense fallback={null}><MyFlight /></Suspense>}
+      {panel === 'atcdesk' && <Suspense fallback={null}><AtcDesk /></Suspense>}
       {panel === 'logbook' && <Logbook />}
-      {panel === 'stats' && <StatsPanel />}
-      {panel === 'profile' && <Profile />}
+      {panel === 'stats' && <Suspense fallback={null}><StatsPanel /></Suspense>}
+      {panel === 'profile' && <Suspense fallback={null}><Profile /></Suspense>}
       {panel === 'friends' && <FriendsPanel />}
       {panel === 'airline' && <AirlinePanel />}
+      {panel === 'now' && <NowPanel />}
       <EmbedBadge />
       <TourChip />
       <ReplayBar />
@@ -330,7 +334,7 @@ export default function App() {
       {overlay === 'layers' && <MapLayerControls />}
       {overlay === 'settings' && <SettingsPanel />}
       {overlay === 'help' && <Shortcuts />}
-      {overlay === 'about' && <About />}
+      {overlay === 'about' && <Suspense fallback={null}><About /></Suspense>}
       {!airportsReady && (
         <div className="splash" role="status" aria-live="polite">
           <IconLogo size={44} />

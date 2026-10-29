@@ -6,7 +6,7 @@ import { loadAtcSession, type AtcSession, type Clearance } from '../data/atc';
 
 export type MapStyleId = 'dark' | 'standard' | 'satellite' | 'radar';
 export type LabelMode = 'auto' | 'off' | 'callsign' | 'full';
-export type Panel = 'traffic' | 'airports' | 'atc' | 'myflight' | 'atcdesk' | 'logbook' | 'stats' | 'profile' | 'friends' | 'airline';
+export type Panel = 'traffic' | 'airports' | 'atc' | 'myflight' | 'atcdesk' | 'logbook' | 'stats' | 'profile' | 'friends' | 'airline' | 'now';
 
 export interface Filters {
   wake: WakeCat[]; // empty = all
@@ -25,7 +25,7 @@ export interface Prefs {
   glass: boolean;
   theme: 'system' | 'dark' | 'light';
   colorBy: 'uniform' | 'altitude';
-  layers: { airports: boolean; atc: boolean; weather: boolean; trails: boolean; borders: boolean; firs: boolean; metar: boolean; daynight: boolean; heatmap: boolean };
+  layers: { airports: boolean; atc: boolean; weather: boolean; trails: boolean; borders: boolean; firs: boolean; metar: boolean; daynight: boolean; heatmap: boolean; busy: boolean };
   pollSec: 15 | 30 | 60;
   source: 'live' | 'demo';
   myVid: string;
@@ -50,7 +50,7 @@ const DEFAULT_PREFS: Prefs = {
   glass: true,
   theme: 'system',
   colorBy: 'uniform',
-  layers: { airports: true, atc: true, weather: false, trails: true, borders: true, firs: true, metar: false, daynight: true, heatmap: false },
+  layers: { airports: true, atc: true, weather: false, trails: true, borders: true, firs: true, metar: false, daynight: true, heatmap: false, busy: true },
   pollSec: 15,
   source: 'live',
   myVid: '',

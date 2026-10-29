@@ -69,7 +69,7 @@ export function Leaderboard() {
             <Board rows={data.atc} value={(r) => `${hm(r.minutes ?? 0)} h`} empty="No ATC time recorded yet this week." />
           </Section>
           {!data.landings.length && <LinkCard />}
-          <p className="fineprint">Weeks run Monday to Sunday, UTC. Flights count when the recorder sees a takeoff and landing on IVAO; ATC time is counted every 15 minutes. Tap anyone to see their profile.</p>
+          <p className="fineprint">Weeks run Monday to Sunday, UTC. Flights count when the recorder sees a takeoff and landing on IVAO; ATC time is counted every 5 minutes. Tap anyone to see their profile.</p>
         </>
       )}
     </>

@@ -27,7 +27,7 @@ export interface ActiveFlight {
   dep: string | null;
   arr: string | null;
   aircraft: string | null;
-  takeoff: number;
+  takeoff: number | null;
 }
 export interface Logbook {
   flights: LoggedFlight[];

@@ -263,3 +263,8 @@ export const IconBell = (p: P) => (
     <path d="M10 20a2 2 0 0 0 4 0" />
   </Svg>
 );
+export const IconPulse = (p: P) => (
+  <Svg {...p}>
+    <path d="M3 12h4l2.5-6 4 12 2.5-6H21" />
+  </Svg>
+);

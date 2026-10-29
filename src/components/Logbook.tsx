@@ -188,7 +188,7 @@ export function Logbook() {
               <span className="live-dot" aria-hidden="true" />
               <span className="mono strong">{a.callsign}</span>
               <span className="mono">{a.dep ?? '····'} → {a.arr ?? '····'}</span>
-              <span className="dim small">airborne {ago(a.takeoff).replace(' ago', '')} · logs when you land</span>
+              <span className="dim small">{a.takeoff ? `airborne ${ago(a.takeoff).replace(' ago', '')}` : 'flying now'} · logs when you land</span>
             </div>
           ))}
 

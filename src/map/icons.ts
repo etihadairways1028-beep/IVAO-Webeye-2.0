@@ -9,60 +9,6 @@ const PAD = 6;
 
 type Draw = (c: CanvasRenderingContext2D) => void;
 
-// Jet: swept wings, tail; `span`/`len` scale by wake category.
-function jet(len: number, span: number, engines4 = false): Draw {
-  return (c) => {
-    const cx = S / 2;
-    const top = S / 2 - len / 2;
-    const bot = S / 2 + len / 2;
-    const w = 2.6 + len * 0.045; // fuselage half-width
-    c.beginPath();
-    c.moveTo(cx, top);
-    c.quadraticCurveTo(cx + w, top + 3, cx + w, top + 9);
-    // right wing
-    c.lineTo(cx + w, S / 2 - len * 0.06);
-    c.lineTo(cx + span / 2, S / 2 + len * 0.12);
-    c.lineTo(cx + span / 2, S / 2 + len * 0.19);
-    c.lineTo(cx + w, S / 2 + len * 0.1);
-    // tail
-    c.lineTo(cx + w * 0.8, bot - len * 0.14);
-    c.lineTo(cx + span * 0.2, bot - len * 0.03);
-    c.lineTo(cx + span * 0.2, bot + 0.5);
-    c.lineTo(cx, bot - 2.5);
-    c.lineTo(cx - span * 0.2, bot + 0.5);
-    c.lineTo(cx - span * 0.2, bot - len * 0.03);
-    c.lineTo(cx - w * 0.8, bot - len * 0.14);
-    c.lineTo(cx - w, S / 2 + len * 0.1);
-    c.lineTo(cx - span / 2, S / 2 + len * 0.19);
-    c.lineTo(cx - span / 2, S / 2 + len * 0.12);
-    c.lineTo(cx - w, S / 2 - len * 0.06);
-    c.lineTo(cx - w, top + 9);
-    c.quadraticCurveTo(cx - w, top + 3, cx, top);
-    c.closePath();
-    c.fill();
-    // engine pods
-    const pods = engines4 ? [0.2, 0.34] : [0.26];
-    for (const p of pods) {
-      for (const sgn of [-1, 1]) {
-        c.beginPath();
-        c.ellipse(cx + sgn * span * p, S / 2 + len * 0.02 + span * p * 0.12, 1.9, 4, 0, 0, Math.PI * 2);
-        c.fill();
-      }
-    }
-  };
-}
-
-// Light aircraft: straight high wing.
-const prop: Draw = (c) => {
-  const cx = S / 2;
-  c.beginPath();
-  c.ellipse(cx, S / 2 - 1, 3.2, 15, 0, 0, Math.PI * 2);
-  c.fill();
-  c.fillRect(cx - 17, S / 2 - 7, 34, 6);
-  c.fillRect(cx - 7.5, S / 2 + 10, 15, 4);
-  c.fillRect(cx - 7, S / 2 - 17, 14, 1.6);
-};
-
 // Radar target: small square with a forward heading vector.
 const radar: Draw = (c) => {
   const cx = S / 2;
@@ -132,13 +78,147 @@ function edt(grid: Float64Array) {
   for (let y = 0; y < S; y++) pass(y * S, 1);
 }
 
+// ───────── Type-accurate silhouettes (top view, nose up). Units: fractions of the length.
+interface Plane {
+  len: number; // px
+  span: number; // wing span / length
+  fw: number; // half fuselage width / length
+  wingLE: number; // wing root leading edge (from nose)
+  chord: number; // root chord
+  sweep: number; // tip leading edge offset back from the root
+  tipChord: number;
+  tail: number; // tailplane span / length
+  engines: { x: number; y: number; w: number; h: number }[]; // right side; mirrored
+  rearEngines?: boolean;
+  props?: boolean;
+}
+
+function airliner(p: Plane): Draw {
+  return (c) => {
+    const L = p.len;
+    const top = S / 2 - L / 2;
+    const X = (u: number) => S / 2 + u * L;
+    const Y = (v: number) => top + v * L;
+    const fw = p.fw;
+    const half: [number, number][] = [
+      [fw * 0.55, 0.035],
+      [fw, 0.1],
+      [fw, p.wingLE],
+      [p.span / 2, p.wingLE + p.sweep],
+      [p.span / 2, p.wingLE + p.sweep + p.tipChord],
+      [fw, p.wingLE + p.chord],
+      [fw * 0.85, 0.8],
+      [p.tail / 2, 0.88 + p.sweep * 0.25],
+      [p.tail / 2, 0.94 + p.sweep * 0.2],
+      [fw * 0.45, 0.965],
+      [0.004, 1],
+    ];
+    c.beginPath();
+    c.moveTo(X(0), Y(0));
+    for (const [u, v] of half) c.lineTo(X(u), Y(v));
+    for (let i = half.length - 1; i >= 0; i--) c.lineTo(X(-half[i][0]), Y(half[i][1]));
+    c.closePath();
+    c.fill();
+    for (const e of p.engines) {
+      for (const sg of [-1, 1]) {
+        c.beginPath();
+        c.ellipse(X(sg * e.x), Y(e.y), e.w * L, e.h * L, 0, 0, Math.PI * 2);
+        c.fill();
+        if (p.props) c.fillRect(X(sg * e.x) - 0.09 * L, Y(e.y - e.h) - 1, 0.18 * L, 1.6); // propeller disc
+      }
+    }
+  };
+}
+
+const NARROW = airliner({ len: 38, span: 0.98, fw: 0.05, wingLE: 0.36, chord: 0.24, sweep: 0.2, tipChord: 0.06, tail: 0.36, engines: [{ x: 0.17, y: 0.4, w: 0.035, h: 0.07 }] });
+const WIDE2 = airliner({ len: 48, span: 0.98, fw: 0.052, wingLE: 0.34, chord: 0.26, sweep: 0.24, tipChord: 0.05, tail: 0.34, engines: [{ x: 0.2, y: 0.39, w: 0.042, h: 0.08 }] });
+const WIDE4 = airliner({ len: 50, span: 0.98, fw: 0.056, wingLE: 0.33, chord: 0.27, sweep: 0.25, tipChord: 0.05, tail: 0.34, engines: [{ x: 0.17, y: 0.38, w: 0.033, h: 0.07 }, { x: 0.32, y: 0.47, w: 0.03, h: 0.065 }] });
+const SUPER = airliner({ len: 52, span: 1.04, fw: 0.068, wingLE: 0.3, chord: 0.32, sweep: 0.24, tipChord: 0.06, tail: 0.38, engines: [{ x: 0.18, y: 0.37, w: 0.036, h: 0.07 }, { x: 0.33, y: 0.46, w: 0.034, h: 0.066 }] });
+const REGIONAL = airliner({ len: 32, span: 0.86, fw: 0.05, wingLE: 0.42, chord: 0.22, sweep: 0.17, tipChord: 0.06, tail: 0.32, engines: [{ x: 0.085, y: 0.74, w: 0.035, h: 0.08 }], rearEngines: true });
+const BIZJET = airliner({ len: 27, span: 0.86, fw: 0.05, wingLE: 0.44, chord: 0.2, sweep: 0.15, tipChord: 0.07, tail: 0.32, engines: [{ x: 0.085, y: 0.73, w: 0.04, h: 0.08 }], rearEngines: true });
+const TURBOPROP = airliner({ len: 32, span: 1.08, fw: 0.05, wingLE: 0.36, chord: 0.14, sweep: 0.005, tipChord: 0.09, tail: 0.32, engines: [{ x: 0.17, y: 0.36, w: 0.035, h: 0.09 }], props: true });
+const GA = airliner({ len: 24, span: 1.3, fw: 0.06, wingLE: 0.3, chord: 0.17, sweep: 0, tipChord: 0.15, tail: 0.44, engines: [], props: false });
+
+const HELI: Draw = (c) => {
+  const cx = S / 2, cy = S / 2 - 4;
+  c.beginPath();
+  c.ellipse(cx, cy, 4.2, 7, 0, 0, Math.PI * 2);
+  c.fill();
+  c.fillRect(cx - 1.1, cy + 5, 2.2, 15); // tail boom
+  c.fillRect(cx - 4, cy + 18, 8, 1.8); // tail rotor
+  c.lineWidth = 1.6;
+  c.strokeStyle = '#fff';
+  c.beginPath();
+  c.arc(cx, cy, 13, 0, Math.PI * 2); // rotor disc
+  c.stroke();
+  c.fillRect(cx - 13, cy - 0.8, 26, 1.6);
+  c.fillRect(cx - 0.8, cy - 13, 1.6, 26);
+};
+
+const FIGHTER: Draw = (c) => {
+  const cx = S / 2, top = S / 2 - 15;
+  c.beginPath();
+  c.moveTo(cx, top);
+  c.lineTo(cx + 2.5, top + 9);
+  c.lineTo(cx + 14, top + 21);
+  c.lineTo(cx + 14, top + 24);
+  c.lineTo(cx + 3, top + 22);
+  c.lineTo(cx + 7, top + 29);
+  c.lineTo(cx + 2, top + 30);
+  c.lineTo(cx, top + 28);
+  c.lineTo(cx - 2, top + 30);
+  c.lineTo(cx - 7, top + 29);
+  c.lineTo(cx - 3, top + 22);
+  c.lineTo(cx - 14, top + 24);
+  c.lineTo(cx - 14, top + 21);
+  c.lineTo(cx - 2.5, top + 9);
+  c.closePath();
+  c.fill();
+};
+
 const ICONS: Record<string, Draw> = {
-  'ac-L': prop,
-  'ac-M': jet(34, 32),
-  'ac-H': jet(44, 42),
-  'ac-J': jet(50, 50, true),
+  'ac-L': GA,
+  'ac-M': NARROW,
+  'ac-H': WIDE2,
+  'ac-J': SUPER,
+  'ac-narrow': NARROW,
+  'ac-wide2': WIDE2,
+  'ac-wide4': WIDE4,
+  'ac-super': SUPER,
+  'ac-regional': REGIONAL,
+  'ac-biz': BIZJET,
+  'ac-turboprop': TURBOPROP,
+  'ac-ga': GA,
+  'ac-heli': HELI,
+  'ac-fighter': FIGHTER,
   'ac-radar': radar,
 };
+
+// ICAO type designator → silhouette family.
+const FAMILIES: [RegExp, string][] = [
+  [/^A38/, 'ac-super'],
+  [/^(B74|A34|IL96|A124|AN22|C5$|C5M|B52|K35R|KC135|E3TF|E3CF|E6|A400)/, 'ac-wide4'],
+  [/^(A30|A310|A33|A35|B76|B77|B78|MD11|DC10|L101|IL86|KC10|KC46|C17$|A3ST|BLCF)/, 'ac-wide2'],
+  [/^(CRJ|E1[3-9]|E14|E17|E19|E29|E75|E9|F70|F100|RJ|B46|BA46|SU95|ARJ|MD8|MD9|DC9|B712|F28)/, 'ac-regional'],
+  [/^(C25|C5[0-9]|C68|C75|CL3|CL6|GLF|GL5|GL6|GL7|GLEX|FA[0-9]|F2TH|F900|LJ|H25|E35|E50|E55|PRM|HDJT|PC24|SF50|EA50|BE40)/, 'ac-biz'],
+  [/^(AT[4-7]|DH8|Q4|SF34|SB20|JS3|JS4|F27|F50|E120|D228|D328|B190|BE20|BE30|BE35|BE9|PC12|C208|C30J|C130|AN2[4-6]|AN32|L410|DHC6|TBM|PA31|PA42|C441|P180|M28)/, 'ac-turboprop'],
+  [/^(EC|AS3|AS5|AS6|B06|B407|B412|B429|R22|R44|R66|S76|S92|H60|UH|AW1|A109|A119|A139|A169|A189|MI8|BK17|H125|H135|H145|H160|H175|CH47)/, 'ac-heli'],
+  [/^(F15|F16|F18|F22|F35|FA18|EUFI|TOR|RFAL|M200|SU27|SU30|SU35|MIG|F4|F5|T38|HAWK|A10|GRIF|JF17|J10|J20)/, 'ac-fighter'],
+  [/^(C1[5-9][0-9]|C2[0-9][0-9]|C17[0-9]|P28|PA[0-9]|DA[2-6]|SR2|BE[0-9]{2}|M20|DR4|TB[0-9]|C42|PIVI|RV|G1|ULAC|AAT|CH7|TAMP|SIRA|AN2)/, 'ac-ga'],
+  [/^(A318|A319|A32|A2[01]N|B73|B38|B39|B3M|BCS|A22|C919|MC21|TU20|B72|B75|YK42)/, 'ac-narrow'],
+];
+/** Icon id for an aircraft: its type family, else by wake category. */
+const familyCache = new Map<string, string>();
+export function iconFor(type: string | null, wake: string): string {
+  const key = `${type ?? ''}|${wake}`;
+  const hit = familyCache.get(key);
+  if (hit) return hit;
+  const t = (type ?? '').toUpperCase();
+  let id = wake === 'L' ? 'ac-ga' : wake === 'H' ? 'ac-wide2' : wake === 'J' ? 'ac-super' : 'ac-narrow';
+  if (t) for (const [re, fam] of FAMILIES) if (re.test(t)) { id = fam; break; }
+  familyCache.set(key, id);
+  return id;
+}
 
 const cache = new Map<string, ReturnType<typeof sdf>>();
 

@@ -18,5 +18,9 @@ export default defineConfig({
   plugins: [react()],
   server: { proxy, port: 5173, host: true },
   preview: { proxy, port: 4173, host: true },
-  build: { chunkSizeWarningLimit: 1500 },
+  build: {
+    chunkSizeWarningLimit: 1500,
+    // MapLibre and React change rarely: separate chunks stay cached across app updates.
+    rollupOptions: { output: { manualChunks: { maplibre: ['maplibre-gl'], react: ['react', 'react-dom', 'zustand'] } } },
+  },
 });

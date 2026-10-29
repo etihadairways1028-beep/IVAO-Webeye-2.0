@@ -1,7 +1,7 @@
 import maplibregl, { type GeoJSONSource, type Map as MLMap, type ExpressionSpecification, type StyleSpecification } from 'maplibre-gl';
 import type { Controller, Flight, SimbriefPlan } from '../types';
 import type { LabelMode, MapStyleId, Prefs, Selection } from '../state/store';
-import { addAircraftIcons } from './icons';
+import { addAircraftIcons, iconFor } from './icons';
 import { FONT_BOLD, FONT_REG, offlineStyle, styleFor, tintDark } from './styles';
 import { allAirports, getAirport } from '../data/airports';
 import { trails } from '../data/feed';
@@ -309,6 +309,12 @@ export class MapController {
     m.addLayer({ id: 'airports', type: 'circle', source: 'airports', layout: { visibility: this.vis('airports') }, filter: ['any', ['>=', ['get', 'size'], 3], ['all', ['>=', ['get', 'size'], 2], ['>=', ['zoom'], 5.5]], ['>=', ['zoom'], 8]], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 1.4, 8, 3.5], 'circle-color': dark ? '#5b6b8c' : '#64748b', 'circle-stroke-width': 0, 'circle-opacity': 0.8 } });
     m.addLayer({ id: 'airport-labels', type: 'symbol', source: 'airports', layout: { visibility: this.vis('airports'), 'text-field': ['get', 'icao'], 'text-font': FONT_REG, 'text-size': 10, 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true }, filter: ['any', ['all', ['>=', ['get', 'size'], 3], ['>=', ['zoom'], 5]], ['all', ['>=', ['get', 'size'], 2], ['>=', ['zoom'], 7.5]], ['>=', ['zoom'], 10]], paint: { 'text-color': dark ? '#7f8db0' : '#475569', 'text-halo-color': halo, 'text-halo-width': 1 } });
 
+    // Busiest airports at world view: a clean ring sized by traffic, with ICAO and count.
+    src('busy');
+    src('busy-lbl');
+    m.addLayer({ id: 'busy', type: 'circle', source: 'busy', maxzoom: 6.5, layout: { visibility: this.vis('busy') }, paint: { 'circle-radius': ['interpolate', ['linear'], ['get', 'n'], 3, 7, 60, 17], 'circle-color': this.accent(), 'circle-opacity': 0.18, 'circle-stroke-color': this.accent(), 'circle-stroke-width': 1.6, 'circle-stroke-opacity': 0.85 } });
+    m.addLayer({ id: 'busy-labels', type: 'symbol', source: 'busy-lbl', maxzoom: 6.5, layout: { visibility: this.vis('busy'), 'text-field': ['format', ['get', 'icao'], {}, '  ', {}, ['to-string', ['get', 'n']], { 'text-color': '#ffd45e' }], 'text-font': FONT_BOLD, 'text-size': 10.5, 'text-offset': [0, 1.7], 'text-anchor': 'top', 'text-optional': true, 'icon-image': 'box', 'icon-text-fit': 'both', 'icon-text-fit-padding': [2, 5, 2, 5] }, paint: { 'text-color': '#ffffff' } });
+
     src('atc');
     src('atc-lbl'); // labels on their own source: a font failure can never hide the stations
     m.addLayer({ id: 'atc', type: 'circle', source: 'atc', layout: { visibility: this.vis('atc') }, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 5, 8, 9], 'circle-color': ['get', 'color'], 'circle-opacity': 0.25, 'circle-stroke-color': ['get', 'color'], 'circle-stroke-width': ['case', ['get', 'sel'], 3.5, 2.5] } });
@@ -329,9 +335,11 @@ export class MapController {
         'icon-image': ['concat', 'atc-', ['get', 'pos']],
         'icon-text-fit': 'both',
         'icon-text-fit-padding': [3, 6, 3, 6],
+        // Badges never pile on top of each other: when two collide the busier/selected one wins.
         'symbol-sort-key': ['case', ['get', 'sel'], 0, 1],
-        'text-allow-overlap': true,
-        'icon-allow-overlap': true,
+        'text-allow-overlap': false,
+        'icon-allow-overlap': false,
+        'text-padding': 1,
       },
       paint: { 'text-color': '#ffffff' },
     });
@@ -398,7 +406,7 @@ export class MapController {
       type: 'symbol',
       source: 'aircraft',
       layout: {
-        'icon-image': this.styleId === 'radar' ? 'ac-radar' : ['match', ['get', 'wake'], 'L', 'ac-L', 'H', 'ac-H', 'J', 'ac-J', 'ac-M'],
+        'icon-image': this.styleId === 'radar' ? 'ac-radar' : ['get', 'icon'],
         'icon-size': ['interpolate', ['linear'], ['zoom'], 1.5, this.styleId === 'radar' ? 0.5 : 0.72, 6, this.styleId === 'radar' ? 0.72 : 1.05, 11, 1.4],
         'icon-rotate': ['get', 'hdg'],
         'icon-rotation-alignment': 'map',
@@ -450,6 +458,7 @@ export class MapController {
     this.pushConflicts();
     this.pushMeasure();
     this.pushHeat();
+    this.pushBusy();
     this.metarAt = 0;
     this.loadMetars(true);
   }
@@ -622,6 +631,7 @@ export class MapController {
         alt: f.onGround ? 0 : f.altitude ?? 0,
         hdg: f.heading ?? 0,
         wake: f.wake,
+        icon: iconFor(f.aircraft, f.wake),
         gnd: f.onGround,
         sel: f.key === sel,
         mine: this.myVid != null && f.vid === this.myVid,
@@ -890,6 +900,7 @@ export class MapController {
       this.pushTails();
       this.pushHeat();
       this.pushNight();
+      this.pushBusy();
       if (this.plan) this.pushPlan();
     }
   }
@@ -962,6 +973,25 @@ export class MapController {
     this.nightAt = Date.now();
     this.set('night', this.nightData());
   }
+  /** Top 12 airports by traffic (departing + arriving). */
+  private pushBusy() {
+    if (!this.map.getSource('busy')) return;
+    const n = new Map<string, number>();
+    for (const f of this.flights) {
+      if (f.dep) n.set(f.dep, (n.get(f.dep) ?? 0) + 1);
+      if (f.arr) n.set(f.arr, (n.get(f.arr) ?? 0) + 1);
+    }
+    const feats: GeoJSON.Feature[] = [];
+    for (const [icao, c] of [...n].sort((a, b) => b[1] - a[1]).slice(0, 12)) {
+      const a = getAirport(icao);
+      if (!a || c < 3) continue;
+      feats.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [a.lon, a.lat] }, properties: { icao, n: c } });
+    }
+    const fc = { type: 'FeatureCollection', features: feats } as GeoJSON.FeatureCollection;
+    this.set('busy', fc);
+    this.set('busy-lbl', fc);
+  }
+
   private pushHeat() {
     if (!this.prefs.layers.heatmap) return this.set('heat', EMPTY);
     this.set('heat', { type: 'FeatureCollection', features: this.flights.map((f) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [f.lon, f.lat] }, properties: {} })) });
@@ -1059,7 +1089,7 @@ export class MapController {
       m.setLayoutProperty('aircraft-labels', 'icon-image', this.boxExpr(p.labels));
     }
     if (prev.colorBy !== p.colorBy) m.setPaintProperty('aircraft', 'icon-color', this.aircraftColor());
-    for (const [key, layers] of [['airports', ['airports', 'airport-labels']], ['atc', ['atc', 'atc-labels', 'atc-ring-fill', 'atc-ring-line', 'fir-active-fill', 'fir-active-line']], ['firs', ['fir-lines']], ['daynight', ['night']], ['heatmap', ['heat']], ['metar', ['metar', 'metar-wind']]] as const) {
+    for (const [key, layers] of [['airports', ['airports', 'airport-labels']], ['atc', ['atc', 'atc-labels', 'atc-ring-fill', 'atc-ring-line', 'fir-active-fill', 'fir-active-line']], ['firs', ['fir-lines']], ['daynight', ['night']], ['heatmap', ['heat']], ['metar', ['metar', 'metar-wind']], ['busy', ['busy', 'busy-labels']]] as const) {
       for (const l of layers) if (m.getLayer(l)) m.setLayoutProperty(l, 'visibility', this.vis(key));
     }
     if (m.getLayer('history')) m.setLayoutProperty('history', 'visibility', this.styleId === 'radar' && p.layers.trails ? 'visible' : 'none');
@@ -1129,7 +1159,7 @@ export class MapController {
 
   private bindEvents() {
     const m = this.map;
-    const clickable = ['aircraft', 'atc', 'airports'];
+    const clickable = ['aircraft', 'atc', 'airports', 'busy'];
     m.on('click', (e) => {
       const layers = clickable.filter((l) => m.getLayer(l));
       const box: [maplibregl.PointLike, maplibregl.PointLike] = [[e.point.x - 8, e.point.y - 8], [e.point.x + 8, e.point.y + 8]];
@@ -1149,7 +1179,7 @@ export class MapController {
         const p = atc.properties as { key: string; airport: string };
         return this.cb.onSelect(p.airport ? { kind: 'airport', icao: p.airport } : { kind: 'atc', key: p.key });
       }
-      const ap = hits.find((h) => h.layer.id === 'airports');
+      const ap = hits.find((h) => h.layer.id === 'airports' || h.layer.id === 'busy');
       if (ap) return this.cb.onSelect({ kind: 'airport', icao: String(ap.properties.icao) });
     });
     m.on('mousemove', (ev) => {
@@ -1168,7 +1198,7 @@ export class MapController {
 
   private hover(e: maplibregl.MapMouseEvent) {
     const m = this.map;
-    const clickable = ['aircraft', 'atc', 'airports', 'metar'];
+    const clickable = ['aircraft', 'atc', 'airports', 'metar', 'busy'];
     {
       const layers = clickable.filter((l) => m.getLayer(l) && m.getLayoutProperty(l, 'visibility') !== 'none');
       if (!layers.length) return;
