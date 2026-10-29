@@ -72,7 +72,7 @@ export function CommandPalette() {
       { id: 'film', group: 'Actions', icon: <IconGlobe size={16} />, title: 'Filming mode (hide the interface)', sub: 'H', run: () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'h' })) },
       { id: 'fs', group: 'Actions', icon: <IconGlobe size={16} />, title: 'Fullscreen', sub: 'Shift+F', run: toggleFullscreen },
       { id: 'tour', group: 'Actions', icon: <IconGlobe size={16} />, title: st.tour ? 'Stop the cinematic tour' : 'Cinematic tour: the camera flies between flights', sub: 'O', run: () => (st.tour ? stopTour() : startTour()) },
-      { id: 'whatsnew', group: 'Actions', icon: <IconGlobe size={16} />, title: 'What’s new in Pulse 3.1', run: showWhatsNew },
+      { id: 'whatsnew', group: 'Actions', icon: <IconGlobe size={16} />, title: 'What’s new in Pulse 3.2', run: showWhatsNew },
       { id: 'world', group: 'Actions', icon: <IconGlobe size={16} />, title: 'World view', sub: 'W', run: () => st.camera_({ type: 'world' }) },
       ...PANELS.map((p) => ({ id: `panel-${p.id}`, group: 'Open', icon: p.icon, title: p.name, sub: p.key, run: () => st.setPanel(p.id) })),
     ];

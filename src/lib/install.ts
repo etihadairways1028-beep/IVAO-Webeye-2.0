@@ -10,7 +10,13 @@ const emit = () => listeners.forEach((l) => l());
 export function initInstall() {
   if (import.meta.env.PROD && 'serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL }).catch(() => undefined);
+      navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL, updateViaCache: 'none' }).then((r) => r.update()).catch(() => undefined);
+      // A new version took over: reload once so nobody is stuck on the old one.
+      const had = !!navigator.serviceWorker.controller;
+      let reloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (had && !reloaded) (reloaded = true), location.reload();
+      });
     });
   }
   window.addEventListener('beforeinstallprompt', (e) => {

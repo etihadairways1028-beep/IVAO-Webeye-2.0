@@ -1,12 +1,15 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useStore } from '../state/store';
 import { enterReplay } from '../data/replay';
-import { IconCloud, IconGauge, IconGlobe, IconLogo, IconPlane, IconReplay, IconSearch, IconSun, IconUser, IconX } from './Icons';
+import { IconPulse, IconRunway, IconCloud, IconGauge, IconGlobe, IconLogo, IconPlane, IconReplay, IconSearch, IconSun, IconUser, IconX } from './Icons';
 
 const KEY = 'webeye2.seenVersion';
-const VERSION = '3.1';
+const VERSION = '3.2';
 
 const FEATURES: { icon: ReactNode; title: string; text: string; key?: string }[] = [
+  { icon: <IconPulse size={20} />, title: 'Now on IVAO', text: 'Events, live hotspots and the 10 busiest airports with departures, arrivals and ATC online. First tab on the left.', key: '1' },
+  { icon: <IconRunway size={20} />, title: 'Busiest airports on the map', text: 'The top 12 airports get a ring and their traffic count at world view. Click one to open it.' },
+  { icon: <IconPlane size={20} />, title: 'Faster, with real aircraft shapes', text: 'Loads much faster, and every type has its own silhouette: A380, 747, 737, ATR, bizjets, helicopters…' },
   { icon: <IconCloud size={20} />, title: 'Airport weather', text: 'Live METARs on the map: VFR, MVFR, IFR and LIFR at a glance, winds from zoom 6, full METAR on hover.' },
   { icon: <IconSun size={20} />, title: 'Day and night', text: 'The night side of the Earth and twilight, moving in real time, plus a traffic heatmap for the world view.' },
   { icon: <IconPlane size={20} />, title: 'Airlines & embeds', text: 'Every flight of an airline in one place, and a live map you can embed on your virtual airline’s website.' },
@@ -45,7 +48,7 @@ export function WhatsNew() {
   if (!open) return null;
   return (
     <div className="wn-wrap" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <div className="wn glass" role="dialog" aria-label="What's new in IVAO Pulse 3.1">
+      <div className="wn glass" role="dialog" aria-label="What's new in IVAO Pulse 3.2">
         <button className="icon-btn wn-x" onClick={close} aria-label="Close">
           <IconX />
         </button>
@@ -54,8 +57,8 @@ export function WhatsNew() {
             <IconLogo />
           </span>
           <div>
-            <h2>Welcome to IVAO Pulse 3.1</h2>
-            <p className="dim">WebEye 2 has a new name. The whole IVAO network, live, with tools you won’t find anywhere else.</p>
+            <h2>Welcome to IVAO Pulse 3.2</h2>
+            <p className="dim">Now faster, with a live network overview and the busiest airports right on the map.</p>
           </div>
         </div>
         <ul className="wn-grid">

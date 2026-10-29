@@ -2,7 +2,7 @@
  * Caches the app shell and bundled reference data so the app opens fast and installs.
  * Live data (IVAO, SimBrief, weather, map tiles, anything under /proxy/) is never cached:
  * what the map shows as live must come from the network. */
-const VERSION = 'webeye-2.1-1';
+const VERSION = 'pulse-3.2-1';
 const SHELL = ['./', 'index.html', 'favicon.svg', 'manifest.webmanifest', 'icon-192.png'];
 
 self.addEventListener('install', (e) => {

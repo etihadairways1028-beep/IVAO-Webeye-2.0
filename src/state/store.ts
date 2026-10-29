@@ -161,7 +161,8 @@ export const useStore = create<State>((set, get) => ({
   selection: null,
   follow: false,
   showRoute: true,
-  panel: null,
+  // Desktop opens on the network overview; phones start on the map.
+  panel: typeof window !== 'undefined' && window.innerWidth >= 900 && !location.hash && !/[?&](embed|overlay|airport)=/.test(location.search) ? 'now' : null,
   overlay: null,
   viewBounds: null,
   camera: null,

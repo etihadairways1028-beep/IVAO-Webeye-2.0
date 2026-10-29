@@ -2,7 +2,7 @@ import { useStore } from '../state/store';
 import { IconLogo, IconX } from './Icons';
 import { useInstall } from '../lib/install';
 
-export const APP_VERSION = '3.1';
+export const APP_VERSION = '3.2';
 
 /** Product information, data attribution and the independence notice. */
 export function About() {

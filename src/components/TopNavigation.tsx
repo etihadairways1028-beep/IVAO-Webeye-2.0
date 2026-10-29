@@ -72,7 +72,7 @@ export function TopNavigation({ visibleCount }: { visibleCount: number }) {
       </div>
       <div className="brand-text">
           <span className="brand-name">
-            IVAO Pulse<span className="brand-ver">3.1</span>
+            IVAO Pulse<span className="brand-ver">3.2</span>
           </span>
           <span className="brand-sub">Live network traffic · community edition</span>
       </div>
