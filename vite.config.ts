@@ -1,5 +1,16 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import type { Plugin } from 'vite';
+
+// Every build gets an id. The app compares it with /version.json (never cached) and reloads itself
+// when a newer build is live, so installed home-screen apps (iPad, iPhone, Android) never go stale.
+const BUILD_ID = new Date().toISOString();
+const versionFile = (): Plugin => ({
+  name: 'pulse-version',
+  generateBundle() {
+    this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ build: BUILD_ID }) });
+  },
+});
 
 // The IVAO, SimBrief, NOAA AWC and RainViewer endpoints are proxied in dev and
 // preview so the browser never depends on third-party CORS headers.
@@ -15,7 +26,8 @@ const proxy = {
 export default defineConfig({
   // GitHub Pages serves the site from /<repo>/; the deploy workflow sets BASE_PATH.
   base: process.env.BASE_PATH || '/',
-  plugins: [react()],
+  plugins: [react(), versionFile()],
+  define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
   server: { proxy, port: 5173, host: true },
   preview: { proxy, port: 4173, host: true },
   build: {

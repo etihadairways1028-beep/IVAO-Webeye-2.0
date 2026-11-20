@@ -14,17 +14,19 @@ import json
 import math
 import os
 import socket
+import subprocess
 import struct
 import sys
 import threading
 import time
 import urllib.request
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 RECORDER = os.environ.get("WEBEYE_RECORDER", "https://webeye-recorder.webeyepagesdev.workers.dev")
 CONFIG_DIR = os.path.join(os.environ.get("APPDATA") or os.path.expanduser("~"), "PulseLink")
 CONFIG = os.path.join(CONFIG_DIR, "config.json")
 HZ = 25  # samples per second
+RELEASE = os.environ.get("PULSELINK_RELEASE", "https://github.com/etihadairways1028-beep/IVAO-Webeye-2.0/releases/download/webeye-link/")
 
 
 def say(msg):
@@ -63,6 +65,68 @@ def ask_vid():
         else:
             print("A VID is a number, like 123456.")
     return c["vid"]
+
+
+# ───────── Self-update: Pulse Link keeps itself on the newest version, no reinstalling.
+
+
+def _ver(v):
+    try:
+        return tuple(int(x) for x in v.strip().split("."))
+    except Exception:
+        return (0,)
+
+
+def _get(url, timeout=20):
+    req = urllib.request.Request(url, headers={"User-Agent": f"PulseLink/{VERSION}", "Cache-Control": "no-cache"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return r.read()
+
+
+def self_update():
+    """Checks for a newer Pulse Link and swaps it in. Returns only if no update was applied."""
+    if os.environ.get("PULSELINK_NO_UPDATE"):
+        return
+    try:
+        latest = _get(RELEASE + "version.txt", 10).decode().strip()
+    except Exception:
+        return  # offline or GitHub unreachable: carry on with this version
+    if _ver(latest) <= _ver(VERSION):
+        return
+    say(f"Updating Pulse Link {VERSION} → {latest}…")
+    try:
+        if getattr(sys, "frozen", False):  # PulseLink.exe
+            exe = sys.executable
+            new = exe + ".new"
+            with open(new, "wb") as f:
+                f.write(_get(RELEASE + "PulseLink.exe", 120))
+            bat = os.path.join(os.path.dirname(exe), "pulselink_update.cmd")
+            with open(bat, "w") as f:
+                f.write(
+                    "@echo off\r\n"
+                    "timeout /t 2 /nobreak >nul\r\n"
+                    ":retry\r\n"
+                    f'move /y "{new}" "{exe}" >nul 2>&1 || (timeout /t 1 /nobreak >nul & goto retry)\r\n'
+                    f'start "" "{exe}"\r\n'
+                    'del "%~f0"\r\n'
+                )
+            subprocess.Popen(["cmd", "/c", bat], creationflags=0x00000008 | 0x00000200)  # detached, new group
+            say("Restarting with the new version…")
+            sys.exit(0)
+        else:  # webeye_link.py run with Python
+            path = os.path.abspath(__file__)
+            code = _get(RELEASE + "webeye_link.py", 60)
+            if b"Pulse Link" not in code:
+                return
+            with open(path + ".new", "wb") as f:
+                f.write(code)
+            os.replace(path + ".new", path)
+            say("Restarting with the new version…")
+            os.execv(sys.executable, [sys.executable, path] + sys.argv[1:])
+    except SystemExit:
+        raise
+    except Exception as e:
+        say(f"Update skipped ({e}). Carrying on with {VERSION}.")
 
 
 # ───────── Simulators. Each returns a dict sample or None when not connected.
@@ -272,14 +336,19 @@ class Watcher:
 
 
 def main():
-    print(f"Pulse Link {VERSION}  ·  exact landing rates for your IVAO Pulse logbook\n")
+    print(f"Pulse Link {VERSION}  ·  exact landing rates for your IVAO Pulse logbook  ·  updates itself\n")
+    self_update()
     vid = ask_vid()
     say(f"VID {vid}. Looking for MSFS or X-Plane… (start the sim; this window can stay open)")
     sim = None
+    last_check = time.time()
     while True:
         if sim is None:
             sim = connect()
             if sim is None:
+                if time.time() - last_check > 6 * 3600:
+                    last_check = time.time()
+                    self_update()
                 time.sleep(5)
                 continue
             say(f"Connected to {sim.name}.")

@@ -21,7 +21,7 @@ export function LinkCard() {
         <strong>Get exact landing rates</strong>
         <span className="badge badge-teal">MSFS · X-Plane</span>
       </div>
-      <p className="small">Pulse Link runs next to your sim and sends your real touchdown: fpm, G-force, bounces and fuel used. Run it, type your VID once, fly.</p>
+      <p className="small">Pulse Link runs next to your sim and sends your real touchdown: fpm, G-force, bounces and fuel used. Run it, type your VID once, fly. Install it once: it updates itself.</p>
       <div className="link-card-actions">
         <a className="btn" href={LINK_EXE} rel="noopener">
           Download for Windows

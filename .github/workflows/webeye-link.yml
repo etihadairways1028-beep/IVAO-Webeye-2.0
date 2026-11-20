@@ -23,5 +23,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp companion/webeye_link.py dist/webeye_link.py
+          python -c "import re;print(re.search(r'VERSION = \"([0-9.]+)\"', open('companion/webeye_link.py').read()).group(1), end='')" > dist/version.txt
+          cat dist/version.txt
           gh release view webeye-link >/dev/null 2>&1 || gh release create webeye-link --title "Pulse Link (sim add-on)" --notes "Exact landing rates for your IVAO Pulse logbook. Windows: download PulseLink.exe and run it next to MSFS or X-Plane. Mac/Linux with X-Plane: download webeye_link.py and run it with Python 3."
           gh release upload webeye-link dist/PulseLink.exe dist/webeye_link.py --clobber
+          # version.txt goes last: installed copies only update once the new files are in place.
+          gh release upload webeye-link dist/version.txt --clobber
+          gh release edit webeye-link --title "Pulse Link (sim add-on)" --notes "Exact landing rates for your IVAO Pulse logbook. Windows: download PulseLink.exe and run it next to MSFS or X-Plane. Mac/Linux with X-Plane: download webeye_link.py and run it with Python 3. Pulse Link updates itself: install once." || true
+          gh release delete-asset webeye-link WebEyeLink.exe -y || true
